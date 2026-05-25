@@ -1,0 +1,20 @@
+#pragma once
+
+#include "Player.h"
+#include "Map.h"
+#include <string>
+
+class EventSystem {
+public:
+    EventSystem();
+
+    void process_new_day(Player& player, Map& map, std::string& message);
+    bool is_drought_active() const { return drought_days_left_ > 0; }
+
+private:
+    int cold_chance_;
+    int drought_chance_;
+    int drought_days_left_;
+
+    bool is_summer(int day) const;
+};
