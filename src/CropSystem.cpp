@@ -50,6 +50,12 @@ bool CropSystem::plant_crop(Player& player, Tile& tile, int crop_id, std::string
         return false;
     }
 
+    constexpr int PLANT_STAMINA_COST = 10; // 심기 스태미나 소모량 (원하는 값으로 수정)
+    if (!player.use_stamina(PLANT_STAMINA_COST)) {
+        message = "스태미나가 부족합니다. (필요: " + std::to_string(PLANT_STAMINA_COST) + ")";
+        return false;
+    }
+
     player.remove_item(info->seed, 1);
     tile.crop_id = info->id;
     tile.crop_progress = 0;
