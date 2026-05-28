@@ -1,6 +1,6 @@
 #include "MarketSystem.h"
 #include "Input.h"
-
+#include "Season.h"
 #include <iostream>
 
 MarketSystem::MarketSystem() {
@@ -127,7 +127,12 @@ bool MarketSystem::sell(Player& player, const MarketItem& item, int qty, std::st
         message = "판매할 수량이 부족합니다.";
         return false;
     }
-    int total = item.sell_price * qty;
+    float multiplier = 1.0f;
+    Season season = season_from_day(player.get_day());
+    if (item.item == ItemType::RICE && season == Season::SUMMER) multiplier = 1.5f;
+    if (item.item == ItemType::APPLE && season == Season::FALL) multiplier = 1.5f;
+    if (item.item == ItemType::WHEAT && season == Season::WINTER) multiplier = 1.3f;
+    int total = static_cast<int>(item.sell_price * qty * multiplier);
     player.remove_item(item.item, qty);
     player.add_money(total);
     message = item.name + " " + std::to_string(qty) + "개를 판매했습니다. (+" + std::to_string(total) + "G)";
