@@ -57,6 +57,8 @@ bool Player::add_exp(int exp) {
     if (leveled) {
         stamina_ = get_stamina_max();
         inventory_.expand(2);
+        levelup_message_ = "🎉 레벨업! Lv." + std::to_string(get_level()) + " 달성! 스태미나 MAX 회복!";
+
     }
     return leveled;
 }

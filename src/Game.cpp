@@ -80,6 +80,12 @@ void Game::handle_input(char input) {
             renderer_.add_message("존재하지 않는 명령어입니다.");
             break;
     }
+// 레벨업 메시지 확인
+    if (!player_.get_levelup_message().empty()) {
+        renderer_.add_message(player_.get_levelup_message());
+        player_.clear_levelup_message();
+    }
+
 }
 
 void Game::handle_action() {
@@ -169,6 +175,7 @@ void Game::handle_farm(Tile& tile) {
     }
 
     std::cout << "🌾 [농경지 관리]\n";
+    std::cout << "🌱 성장 현황: " << tile.crop_progress << "/" << tile.crop_max_progress << "일\n";
     std::cout << "1. 수확하기\n";
     if (event_system_.is_drought_active()) {
         std::cout << "2. 물 주기 (가뭄 대처, 스태미나 20)\n";

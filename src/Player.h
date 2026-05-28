@@ -49,7 +49,8 @@ public:
     void apply_cold_penalty();
     void recover_daily_status();
     bool is_sick_today() const { return sick_today_; }
-
+    const std::string& get_levelup_message() const { return levelup_message_; }
+    void clear_levelup_message() { levelup_message_.clear(); }
 private:
     int x_;
     int y_;
@@ -59,8 +60,10 @@ private:
     int tool_grade_;       // 0 기본, 1 구리, 2 철, 3 금
     int stamina_limit_;    // 0이면 제한 없음, 감기 이벤트 때 임시 제한
     bool sick_today_;
+    std::string levelup_message_;
 
     LevelSystem level_system_;
     Inventory<ItemType> inventory_;
     std::string name_;
+
 };
