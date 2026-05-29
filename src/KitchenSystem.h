@@ -1,0 +1,23 @@
+#pragma once
+
+#include "Player.h"
+#include <string>
+
+class KitchenSystem {
+public:
+    KitchenSystem();
+
+    void interact(Player& player);
+    int get_level() const { return level_; }
+    bool perform_action(Player& player, int action, std::string& message); // 1 빵, 2 생선구이, 3 사과파이, 4 업그레이드
+
+private:
+    int level_;
+    static constexpr int MAX_LEVEL = 3;
+
+    void show_menu(Player& player);
+    bool upgrade(Player& player, std::string& message);
+    bool cook_bread(Player& player, std::string& message);
+    bool cook_grilled_fish(Player& player, std::string& message);
+    bool cook_apple_pie(Player& player, std::string& message);
+};
