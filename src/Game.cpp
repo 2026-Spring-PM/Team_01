@@ -3,7 +3,7 @@
 #include "CropSystem.h"
 #include "LivestockSystem.h"
 #include "MiniGames.h"
-
+#include <SDL.h>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>

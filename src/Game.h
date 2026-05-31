@@ -8,7 +8,7 @@
 #include "WorkshopSystem.h"
 #include "EventSystem.h"
 #include <string>
-
+#include <SDL.h>
 #ifdef FARM_GUI
 #include "GuiRenderer.h"
 #endif
@@ -54,7 +54,7 @@ private:
     void handle_gui_market();
     void handle_gui_farm(Tile& tile);
     void handle_gui_livestock(Tile& tile);
-    void handle_gui_building(Tile& tile);
+    void handle_gui_building(Tile& tile, const std::string& type);
     void handle_gui_kitchen();
     void handle_gui_workshop();
     void handle_gui_storage();

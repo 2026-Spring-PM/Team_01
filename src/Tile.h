@@ -8,7 +8,7 @@ enum class TileType {
     LIVESTOCK,  // 🟫 사육 공간
     FARM,       // 🟩 농업 공간
     PATH,       // ⬜ 자갈길
-
+    BUILDING,
     BED,        // 🛏️ 침대
     MARKET,     // 🏪 시장
     KITCHEN,    // 🍳 주방

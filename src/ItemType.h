@@ -40,6 +40,10 @@ enum class ItemType {
     FISH_FLATFISH,
     FISH_TUNA,
 
+    BREAD,
+    GRILLED_FISH,
+    APPLE_PIE,
+
     // 보물상자 (새로 추가)
     TREASURE_BOX_BASIC,
     TREASURE_BOX_NORMAL,
