@@ -99,8 +99,14 @@ void Map::spawn_wild_trees() {
         }
     }
 
-    int MAX_TREES = 7; // 맵에 상시 유지될 최대 나무 개수
+    // 맵에 상시 유지될 최대 나무 개수를 7개 -> 4개로 감소
+    int MAX_TREES = 4; 
     int to_spawn = MAX_TREES - current_trees;
+
+    // 하루에 최대 1그루씩만 자라도록 성장 속도 제한
+    if (to_spawn > 2) {
+        to_spawn = 2; 
+    }
 
     // 2. 빈 자갈길 중 무작위로 골라 나무 생성
     for (int i = 0; i < to_spawn; ++i) {
@@ -109,9 +115,7 @@ void Map::spawn_wild_trees() {
         int rand_idx = std::rand() % valid_paths.size();
         auto [nx, ny] = valid_paths[rand_idx];
         
-        // ⭐ 수정됨: 캐릭터가 해당 타일 위로 올라가 J키를 누를 수 있도록 길막(occupied) 설정을 뺍니다!
         tiles_[ny][nx].has_wild_tree = true;
-        // tiles_[ny][nx].is_occupied = true;  <-- 이 줄을 완전히 삭제하세요!
 
         // 사용한 자리는 후보에서 제외
         valid_paths.erase(valid_paths.begin() + rand_idx);

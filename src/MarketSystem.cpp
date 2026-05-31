@@ -28,7 +28,21 @@ MarketSystem::MarketSystem() {
         {ItemType::FISH_MACKEREL, "고등어", 0, 40, 1},
         {ItemType::FISH_FLATFISH, "광어", 0, 75, 1},
         {ItemType::FISH_TUNA,     "참치", 0, 250, 1},
-
+        {ItemType::FOOD_POTATO_SOUP,      "감자 수프", 0, 30, 1},
+        {ItemType::FOOD_CARROT_EGG_ROLL,  "당근 달걀 롤", 0, 75, 1},
+        {ItemType::FOOD_MACKEREL_STEW,    "고등어 당근 조림", 0, 70, 1},
+        
+        {ItemType::FOOD_PORK_STEW,        "돼지 감자 짜글이", 0, 390, 1},
+        {ItemType::FOOD_POTATO_PANCAKE,   "감자 밀 부침개", 0, 130, 1},
+        {ItemType::FOOD_FLATFISH_STEAK,   "당근 광어 스테이크", 0, 210, 1},
+        
+        {ItemType::FOOD_CARROT_RICE,      "3색 당근 쌀밥", 0, 220, 1},
+        {ItemType::FOOD_BEEF_STEAK,       "매쉬드 비프 스테이크", 0, 540, 1},
+        {ItemType::FOOD_APPLE_JUICE,      "당근 사과 주스 만찬", 0, 320, 1},
+        
+        {ItemType::FOOD_TUNA_STEAK,       "참치 가니쉬 스테이크", 0, 1050, 1},
+        {ItemType::FOOD_HAYASHI_RICE,     "특선 하이라이스 만찬", 0, 760, 1},
+        {ItemType::FOOD_APPLE_MOUSSE,     "사과 감자 무스 케이크", 0, 460, 1},
         {ItemType::COPPER,        "구리 광석", 0, 15, 1},
         {ItemType::IRON,          "철 광석", 0, 30, 1},
         {ItemType::GOLD,          "금 광석", 0, 75, 1}

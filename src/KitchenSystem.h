@@ -2,6 +2,8 @@
 
 #include "Player.h"
 #include <string>
+#include "ItemType.h"
+
 
 class KitchenSystem {
 public:
@@ -9,7 +11,7 @@ public:
 
     void interact(Player& player);
     int get_level() const { return level_; }
-    bool perform_action(Player& player, int action, std::string& message); // 1 빵, 2 생선구이, 3 사과파이, 4 업그레이드
+    void perform_action(Player& player, int action, std::string& message); 
 
 private:
     int level_;

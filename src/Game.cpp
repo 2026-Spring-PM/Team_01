@@ -3,7 +3,7 @@
 #include "CropSystem.h"
 #include "LivestockSystem.h"
 #include "MiniGames.h"
-#include <SDL.h>
+
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -21,7 +21,6 @@ Game::Game()
       event_system_(),
       is_running_(true) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
-    map_.spawn_wild_trees();
 }
 
 void Game::run() {
@@ -340,7 +339,7 @@ void Game::advance_day() {
     std::string event_message;
     event_system_.process_new_day(player_, map_, event_message);
     map_.advance_day();
-    map_.spawn_wild_trees();
+
     std::string message = "침대에서 잠을 잤습니다. 하루가 지나 작물과 가축이 성장했습니다. 🌅";
     if (!event_message.empty()) message += " " + event_message;
     renderer_.add_message(message);
@@ -506,6 +505,8 @@ void Game::remove_crop_from_tile(Tile& tile, std::string& message) {
     message = name + "을(를) 제거했습니다.";
 }
 
+
+#ifdef FARM_GUI
 
 static std::string gui_inventory_summary(const Player& player, int max_items = 8) {
     std::ostringstream oss;
@@ -676,7 +677,7 @@ void Game::handle_gui_livestock(Tile& tile) {
     gui_renderer_.show_notice("가축 관리", msg);
 }
 
-
+#ifdef FARM_GUI
 void Game::handle_gui_building(Tile& tile, const std::string& type) {
     std::string msg = type + "을(를) 건설하시겠습니까?";
     int sel = gui_renderer_.show_choice("건축 부지", msg, {{1, type + " 건설"}, {0, "취소"}}, 0);
@@ -700,34 +701,81 @@ void Game::handle_gui_building(Tile& tile, const std::string& type) {
         renderer_.add_message("건설을 취소했습니다.");
     }
 }
+#endif
+
 
 void Game::handle_gui_kitchen() {
     std::ostringstream status;
     status << "주방 Lv." << kitchen_.get_level()
            << " | 골드 " << player_.get_money() << "G"
            << " | 스태미나 " << player_.get_stamina() << "/" << player_.get_stamina_max()
-           << "\n보유: 밀 " << player_.count_item(ItemType::WHEAT)
-           << ", 고등어 " << player_.count_item(ItemType::FISH_MACKEREL)
-           << ", 사과 " << player_.count_item(ItemType::APPLE);
+           << "\n🎒 감자:" << player_.count_item(ItemType::POTATO)
+           << " 당근:" << player_.count_item(ItemType::CARROT)
+           << " 밀:" << player_.count_item(ItemType::WHEAT)
+           << " 쌀:" << player_.count_item(ItemType::RICE)
+           << " 사과:" << player_.count_item(ItemType::APPLE);
 
-    const bool apple_locked = kitchen_.get_level() < 2;
-    const bool upgrade_locked = kitchen_.get_level() >= 3;
+    int k_lv = kitchen_.get_level();
+    
+    // 주방 레벨에 따른 잠금 조건 설정
+    const bool lv2_locked = (k_lv < 2);
+    const bool lv3_locked = (k_lv < 3);
+    const bool lv4_locked = (k_lv < 4);
+    const bool max_level_reached = (k_lv >= 4);
+
+    // [왼쪽 액션 목록 패널]
     std::vector<GuiActionEntry> actions{
-        {1, "빵 만들기", "밀2 / Sta10 / XP20", "food_bread", false},
-        {2, "생선구이 만들기", "고등어1 / Sta15 / XP30", "food_grilled_fish", false},
-        {3, "사과파이 만들기", "주방 Lv.2 필요 / 밀2+사과3 / Sta20 / XP50", "food_apple_pie", apple_locked},
-        {4, upgrade_locked ? "주방 최고 레벨" : "주방 업그레이드", upgrade_locked ? "더 이상 업그레이드할 수 없습니다." : "500G / 최대 Lv.3", "kitchen", upgrade_locked}
-    };
-    std::vector<GuiActionEntry> recipes{
-        {1, "빵", "밀 2개 + 스태미나 10", "item_wheat", false},
-        {2, "생선구이", "고등어 1개 + 스태미나 15", "fish_mackerel", false},
-        {3, "사과파이", "주방 Lv.2 / 밀 2개 + 사과 3개", "food_apple_pie", apple_locked},
-        {4, "업그레이드", "500G로 주방 레벨 +1", "coin", upgrade_locked}
+        // 주방 Lv 1 요리 (기본 해금)
+        {1, "감자 수프", "감자 2 / Sta -2 / 체력 +5", "food_potato_soup", false},
+        {2, "당근 달걀 롤", "당근 2 + 달걀 1 / Sta -2 / 체력 +8", "food_carrot_egg_roll", false},
+        {3, "고등어 당근 조림", "고등어 1 + 당근 1 / Sta -2 / 체력 +7", "food_mackerel_stew", false},
+        
+        // 주방 Lv 2 요리
+        {4, "돼지고기 감자 짜글이", "주방 Lv.2 / 돼지 1 + 감자 2 / Sta -2 / 체력 +12", "food_pork_stew", lv2_locked},
+        {5, "감자 밀 부침개", "주방 Lv.2 / 밀 2 + 감자 1 + 달걀 1 / Sta -2 / 체력 +10", "food_potato_pancake", lv2_locked},
+        {6, "당근 광어 스테이크", "주방 Lv.2 / 광어 1 + 당근 2 / Sta -2 / 체력 +15", "food_flatfish_steak", lv2_locked},
+        
+        // 주방 Lv 3 요리
+        {7, "3색 당근 쌀밥", "주방 Lv.3 / 쌀 2 + 당근 2 + 달걀 1 / Sta -3 / 체력 +0", "food_carrot_rice", lv3_locked},
+        {8, "매쉬드 비프 스테이크", "주방 Lv.3 / 우유 1 + 돼지 1 + 감자 2 / Sta -3 / 체력 +20", "food_beef_steak", lv3_locked},
+        {9, "당근 사과 주스 만찬", "주방 Lv.3 / 사과 2 + 당근 2 + 우유 1 / Sta -3 / 체력 +18", "food_apple_juice", lv3_locked},
+        
+        // 주방 Lv 4 요리
+        {10, "국왕의 참치 스테이크", "주방 Lv.4 / 참치 1 + 감자 3 + 당근 1 / Sta -3 / 체력 +0", "food_tuna_steak", lv4_locked},
+        {11, "특선 하이라이스 만찬", "주방 Lv.4 / 쌀 2 + 돼지 1 + 당근 2 + 우유 1 / Sta -3 / 체력 +30", "food_hayashi_rice", lv4_locked},
+        {12, "사과 감자 무스 케이크", "주방 Lv.4 / 사과 2 + 밀 2 + 감자 2 + 우유 1 / Sta -3 / 체력 +20", "food_apple_mousse", lv4_locked},
+        
+        // 주방 업그레이드 (기획서 기준 최고 4레벨)
+        {13, max_level_reached ? "주방 최고 레벨" : "주방 업그레이드", max_level_reached ? "더 이상 확장할 수 없습니다." : "Lv.10/16/20 및 골드 필요", "kitchen", max_level_reached}
     };
 
+    // [오른쪽 조합식/조건 상세 패널] 동일한 구조로 동기화
+    std::vector<GuiActionEntry> recipes{
+        {1, "감자 수프", "감자 2개 필요", "potato", false},
+        {2, "당근 달걀 롤", "당근 2개 + 달걀 1개", "carrot", false},
+        {3, "고등어 당근 조림", "고등어 1개 + 당근 1개", "fish_mackerel", false},
+        
+        {4, "돼지 감자 짜글이", "돼지고기 1개 + 감자 2개", "pork", lv2_locked},
+        {5, "감자 밀 부침개", "밀 2개 + 감자 1개 + 달걀 1개", "wheat", lv2_locked},
+        {6, "당근 광어 스테이크", "광어 1개 + 당근 2개", "fish_flatfish", lv2_locked},
+        
+        {7, "3색 당근 쌀밥", "쌀 2개 + 당근 2개 + 달걀 1개", "rice", lv3_locked},
+        {8, "매쉬드 비프 스테이크", "우유 1개 + 돼지고기 1개 + 감자 2개", "milk", lv3_locked},
+        {9, "당근 사과 주스 만찬", "사과 2개 + 당근 2개 + 우유 1개", "apple", lv3_locked},
+        
+        {10, "국왕의 참치 스테이크", "참치 1개 + 감자 3개 + 당근 1개", "fish_tuna", lv4_locked},
+        {11, "특선 하이라이스 만찬", "쌀 2개 + 돼지고기 1개 + 당근 2개 + 우유 1개", "rice", lv4_locked},
+        {12, "사과 감자 무스 케이크", "사과 2개 + 밀 2개 + 감자 2개 + 우유 1개", "apple", lv4_locked},
+        
+        {13, "주방 업그레이드", "Lv1->2: 1000G / Lv2->3: 2500G / Lv3->4: 5000G", "coin", max_level_reached}
+    };
+
+    // GUI 액션 패널 출력 및 유저 선택 받기
     int sel = gui_renderer_.show_action_panel("주방", status.str(), "조합식 / 조건", actions, recipes, 0);
     if (sel == 0) { renderer_.add_message("주방 이용을 취소했습니다."); return; }
+    
     std::string msg;
+    // 유저가 선택한 번호(1~13)를 KitchenSystem::perform_action으로 정확하게 전달
     kitchen_.perform_action(player_, sel, msg);
     renderer_.add_message(msg);
     gui_renderer_.show_notice("주방 결과", msg);
@@ -813,7 +861,7 @@ void Game::show_gui_inventory() {
     gui_renderer_.show_inventory(player_);
     renderer_.add_message("인벤토리를 확인했습니다.");
 }
-
+#endif
 
 void Game::ask_sleep() {
 #ifdef FARM_GUI
