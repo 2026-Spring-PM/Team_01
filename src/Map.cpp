@@ -81,11 +81,12 @@ void Map::kill_unwatered_crops_during_drought() {
         }
     }
 }
+
 void Map::spawn_wild_trees() {
     int current_trees = 0;
     std::vector<std::pair<int, int>> valid_paths;
 
-    // 현재 나무 개수 파악 및 심을 수 있는 빈 타일(PATH) 목록 수집
+    // 1. 현재 맵에 남아있는 나무 개수 파악 및 심을 수 있는 빈 자갈길 수집
     for (int y = 0; y < HEIGHT; ++y) {
         for (int x = 0; x < WIDTH; ++x) {
             if (tiles_[y][x].has_wild_tree) {
@@ -98,19 +99,21 @@ void Map::spawn_wild_trees() {
         }
     }
 
-    int MAX_TREES = 7;
+    int MAX_TREES = 7; // 맵에 상시 유지될 최대 나무 개수
     int to_spawn = MAX_TREES - current_trees;
 
-    // 빈 타일 중 무작위로 골라 나무 생성
-    for (int i = 0; i < to_spawn && !valid_paths.empty(); ++i) {
-        int idx = std::rand() % valid_paths.size();
-        int rx = valid_paths[idx].first;
-        int ry = valid_paths[idx].second;
+    // 2. 빈 자갈길 중 무작위로 골라 나무 생성
+    for (int i = 0; i < to_spawn; ++i) {
+        if (valid_paths.empty()) break;
 
-        tiles_[ry][rx].has_wild_tree = true;
-        tiles_[ry][rx].is_occupied = true; // 이동 불가 처리
+        int rand_idx = std::rand() % valid_paths.size();
+        auto [nx, ny] = valid_paths[rand_idx];
+        
+        // ⭐ 수정됨: 캐릭터가 해당 타일 위로 올라가 J키를 누를 수 있도록 길막(occupied) 설정을 뺍니다!
+        tiles_[ny][nx].has_wild_tree = true;
+        // tiles_[ny][nx].is_occupied = true;  <-- 이 줄을 완전히 삭제하세요!
 
-        // 방금 나무를 심은 곳은 목록에서 제거
-        valid_paths.erase(valid_paths.begin() + idx);
+        // 사용한 자리는 후보에서 제외
+        valid_paths.erase(valid_paths.begin() + rand_idx);
     }
 }

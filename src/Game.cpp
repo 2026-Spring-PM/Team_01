@@ -21,6 +21,7 @@ Game::Game()
       event_system_(),
       is_running_(true) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
+    map_.spawn_wild_trees();
 }
 
 void Game::run() {
@@ -339,7 +340,7 @@ void Game::advance_day() {
     std::string event_message;
     event_system_.process_new_day(player_, map_, event_message);
     map_.advance_day();
-
+    map_.spawn_wild_trees();
     std::string message = "침대에서 잠을 잤습니다. 하루가 지나 작물과 가축이 성장했습니다. 🌅";
     if (!event_message.empty()) message += " " + event_message;
     renderer_.add_message(message);
@@ -505,8 +506,6 @@ void Game::remove_crop_from_tile(Tile& tile, std::string& message) {
     message = name + "을(를) 제거했습니다.";
 }
 
-
-#ifdef FARM_GUI
 
 static std::string gui_inventory_summary(const Player& player, int max_items = 8) {
     std::ostringstream oss;
@@ -677,7 +676,7 @@ void Game::handle_gui_livestock(Tile& tile) {
     gui_renderer_.show_notice("가축 관리", msg);
 }
 
-#ifdef FARM_GUI
+
 void Game::handle_gui_building(Tile& tile, const std::string& type) {
     std::string msg = type + "을(를) 건설하시겠습니까?";
     int sel = gui_renderer_.show_choice("건축 부지", msg, {{1, type + " 건설"}, {0, "취소"}}, 0);
@@ -701,7 +700,6 @@ void Game::handle_gui_building(Tile& tile, const std::string& type) {
         renderer_.add_message("건설을 취소했습니다.");
     }
 }
-#endif
 
 void Game::handle_gui_kitchen() {
     std::ostringstream status;
@@ -815,7 +813,7 @@ void Game::show_gui_inventory() {
     gui_renderer_.show_inventory(player_);
     renderer_.add_message("인벤토리를 확인했습니다.");
 }
-#endif
+
 
 void Game::ask_sleep() {
 #ifdef FARM_GUI

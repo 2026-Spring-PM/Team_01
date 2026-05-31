@@ -8,9 +8,10 @@ Player::Player()
       money_(INITIAL_MONEY),
       stamina_(LevelSystem::INITIAL_STAMINA),
       day_(1),
-      hoe_grade_(0),              // 초기화
-      fishing_rod_grade_(0),       // 초기화
-      pickaxe_grade_(0),          // 초기화
+      tool_grade_(0),
+      hoe_grade_(0),
+      fishing_rod_grade_(0),
+      pickaxe_grade_(0),
       storage_level_(0),
       facing_('f'),
       stamina_limit_(0),
@@ -105,7 +106,7 @@ void Player::set_tool_grade(int grade) {
 }
 
 int Player::get_harvest_stamina_cost() const {
-    switch (tool_grade_) {
+    switch (hoe_grade_) {
         case 1: return 2;
         case 2: return 1;
         case 3: return 0;

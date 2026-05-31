@@ -40,7 +40,7 @@ void Renderer::draw_status_bar(const Player& player) {
 
     std::cout << "💰 " << player.get_money() << "G   ⚡ " << player.get_stamina() << "/" << player.get_stamina_max()
               << "   🎒 " << player.inventory().used_slots() << "/" << player.inventory().max_slots()
-              << "   🛠️ 도구등급 " << player.get_tool_grade();
+              << "   🛠️ 도구등급: 낚싯대 " << player.get_fishing_rod_grade() << ", 곡괭이 " << player.get_pickaxe_grade() << " , 괭이 " << player.get_hoe_grade();
     if (player.is_sick_today()) std::cout << "   🤧 감기";
     std::cout << "\n";
     std::cout << "═══════════════════════════════════════════════\n";
@@ -91,11 +91,12 @@ void Renderer::draw_map(const Player& player, const Map& map) {
                     else if (tile.animal_type == 3) std::cout << "🐂";
                     else std::cout << "🐾";
                 }
-
-                if (tile.has_wild_tree) {
-                std::cout << "🌲";
                 continue;
-                }
+    
+            }
+
+            if (tile.has_wild_tree) {
+                std::cout << "🌲";
                 continue;
             }
 
