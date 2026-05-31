@@ -1,17 +1,11 @@
-#!/bin/bash
-# Docker 박스 안에서 실행되는 빌드 스크립트
-# g++로 직접 컴파일하여 build/main 생성
-
+#!/usr/bin/env bash
 set -e
 
-# build 폴더 없으면 생성
-mkdir -p build
+# 기본값은 터미널 모드입니다. GUI 빌드는 ENABLE_GUI=ON bash scripts/build.sh 로 실행하세요.
+ENABLE_GUI_VALUE="${ENABLE_GUI:-OFF}"
 
-# src/ 및 하위 폴더의 모든 .cpp 파일 수집
-SOURCES=$(find src -name "*.cpp")
-
-# g++로 컴파일
-g++ -std=c++17 -Wall -Wextra -Isrc -o build/main $SOURCES
+cmake -S . -B build -DENABLE_GUI=${ENABLE_GUI_VALUE}
+cmake --build build
 
 echo ""
-echo "[OK] Build successful: build/main"
+echo "[OK] Build successful: build/main (ENABLE_GUI=${ENABLE_GUI_VALUE})"

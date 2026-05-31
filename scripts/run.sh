@@ -1,12 +1,9 @@
-#!/bin/bash
-# 호스트에서 실행하는 Docker 진입 스크립트
-# Docker 박스를 띄우고 build.sh로 빌드 후 main 실행
-
+#!/usr/bin/env bash
 set -e
 
+# 기존 과제 Docker 이미지에서 터미널 모드로 실행합니다.
 IMAGE_NAME="chwoong/team_00_project:0.1.0"
 
-# Windows Git Bash의 경로 자동 변환 비활성화
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL="*"
 
