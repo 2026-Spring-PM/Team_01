@@ -3,22 +3,68 @@
 Spring 2026 Programming Methodology Team Project
 
 ## Requirements
-- Docker Desktop
 
-## How to Build & Run
+### Terminal version
+- Docker Desktop or local C++17/CMake environment
 
+### GUI version
+- `SDL2`
+- `SDL2_image`
+- On Ubuntu/WSL:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake pkg-config libsdl2-dev libsdl2-image-dev
+```
+
+## Local Build & Run
+
+### GUI version
+
+```bash
+rm -rf build
+cmake -S . -B build -DENABLE_GUI=ON
+cmake --build build
+./build/main
+```
+
+### Terminal version
+
+```bash
+rm -rf build
+cmake -S . -B build -DENABLE_GUI=OFF
+cmake --build build
+./build/main
+```
+
+## Docker Build & Run
+
+### Terminal version
+
+```bash
 bash scripts/run.sh
+```
+
+### GUI version
+
+Linux X11 example:
+
+```bash
+xhost +local:docker
+bash scripts/run_gui.sh
+```
+
+Windows users need an X server such as VcXsrv or Xming before running Docker GUI.
 
 ## Project Structure
 
-- src/ — C++ 소스 코드
-- scripts/ — 빌드/실행 스크립트
-- docs/ — 설계 문서
-- assets/ — 게임 리소스 (GUI 시)
+- `src/` — C++ source code
+- `assets/sprites/` — PNG GUI sprites
+- `scripts/` — build/run scripts
+- `docs/` — reports and design docs
 
-## Team
+## GUI Notes
 
-- 팀원 1
-- 팀원 2
-- 팀원 3
-- 팀원 4
+The SDL2 GUI now covers the main map, player movement, HUD, event icons, shop, farming choices, livestock choices, building construction, kitchen, workshop, fishing minigame, lotto mining minigame, inventory, and quit confirmation.
+
+Detailed menus use SDL popup buttons through `SDL_ShowMessageBox`, so they no longer require typing into the terminal while GUI mode is active.
