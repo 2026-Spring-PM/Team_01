@@ -12,16 +12,19 @@ public:
     static constexpr int BED_Y = 1;
 
     static constexpr int MARKET_X = 10;
-    static constexpr int MARKET_Y = 5;
+    static constexpr int MARKET_Y = 4;
 
-    static constexpr int KITCHEN_X = 9;
-    static constexpr int KITCHEN_Y = 10;
+    static constexpr int KITCHEN_X = 8;
+    static constexpr int KITCHEN_Y = 7;
 
-    static constexpr int WORKSHOP_X = 11;
-    static constexpr int WORKSHOP_Y = 10;
+    static constexpr int WORKSHOP_X = 10;
+    static constexpr int WORKSHOP_Y = 7;
 
-    static constexpr int MINE_X = 11;
-    static constexpr int MINE_Y = 11;
+    static constexpr int STORAGE_X = 8;
+    static constexpr int STORAGE_Y = 10;
+
+    static constexpr int MINE_X = 10;
+    static constexpr int MINE_Y = 10;
 
     Map();
 

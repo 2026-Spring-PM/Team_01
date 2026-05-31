@@ -18,23 +18,25 @@ static void fill_region(std::vector<std::vector<Tile>>& tiles,
 }
 
 Map::Map() : tiles_(HEIGHT, std::vector<Tile>(WIDTH)), out_of_bounds_tile_{} {
-    fill_region(tiles_, 0, 0, WIDTH - 1, HEIGHT - 1, TileType::PATH);
+    // (맵 전체는 기본적으로 자갈길로 생성되므로, 덮어쓰기 방지를 위해 전체 덮기 코드는 삭제했습니다.)
 
+    // 1. 물가와 모래사장 세팅
     fill_region(tiles_, 0, 0, 0, 11, TileType::WATER);
     fill_region(tiles_, 1, 0, 1, 11, TileType::SAND);
 
+    // 2. 사육장
     fill_region(tiles_, 3, 0, 7, 2, TileType::LIVESTOCK);
 
+    // 3. 농경지
     fill_region(tiles_, 3, 4, 6, 6, TileType::FARM);
     fill_region(tiles_, 3, 8, 6, 10, TileType::FARM);
 
-    fill_region(tiles_, 9, 0, 11, 3, TileType::BUILDING);
-    reset_tile(tiles_[BED_Y][BED_X], TileType::BED);
-
-    reset_tile(tiles_[MARKET_Y][MARKET_X], TileType::MARKET);
-    // 주방과 작업장은 처음부터 존재하지 않습니다.
-    // BUILDING 타일에서 J 상호작용으로 직접 건설해야 🍳/🔨 건물이 생깁니다.
-    // 기존 KITCHEN_X/Y, WORKSHOP_X/Y 좌표는 상수로만 남겨 두고, 시작 맵에는 배치하지 않습니다.
+    // 4. 건물 2x2 부지 할당
+    fill_region(tiles_, BED_X, BED_Y, BED_X + 1, BED_Y + 1, TileType::BED);
+    fill_region(tiles_, MARKET_X, MARKET_Y, MARKET_X + 1, MARKET_Y + 1, TileType::MARKET);
+    fill_region(tiles_, KITCHEN_X, KITCHEN_Y, KITCHEN_X + 1, KITCHEN_Y + 1, TileType::KITCHEN);
+    fill_region(tiles_, WORKSHOP_X, WORKSHOP_Y, WORKSHOP_X + 1, WORKSHOP_Y + 1, TileType::WORKSHOP);
+    fill_region(tiles_, STORAGE_X, STORAGE_Y, STORAGE_X + 1, STORAGE_Y + 1, TileType::STORAGE);
 }
 
 const Tile& Map::get_tile(int x, int y) const {

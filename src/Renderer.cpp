@@ -49,18 +49,21 @@ void Renderer::draw_status_bar(const Player& player) {
 void Renderer::draw_map(const Player& player, const Map& map) {
     for (int y = 0; y < Map::HEIGHT; ++y) {
         for (int x = 0; x < Map::WIDTH; ++x) {
+            // 1. 플레이어 위치
             if (x == player.get_x() && y == player.get_y()) {
                 std::cout << "🧑‍🌾";
                 continue;
             }
 
-            if (x == Map::MINE_X && y == Map::MINE_Y) {
+            // 2. 광산 2x2 영역 체크
+            if (x >= Map::MINE_X && x <= Map::MINE_X + 1 && y >= Map::MINE_Y && y <= Map::MINE_Y + 1) {
                 std::cout << "⛏️ ";
                 continue;
             }
 
             const Tile& tile = map.get_tile(x, y);
 
+            // 3. 작물 렌더링
             if (tile.has_crop()) {
                 if (tile.crop_progress >= tile.crop_max_progress && tile.crop_harvest_cooldown == 0) {
                     if (tile.crop_id == 1) std::cout << "🥔";
@@ -74,6 +77,7 @@ void Renderer::draw_map(const Player& player, const Map& map) {
                 continue;
             }
 
+            // 4. 동물 렌더링
             if (tile.has_animal()) {
                 bool adult = tile.animal_age >= tile.animal_adult_age;
                 if (adult) {
@@ -90,6 +94,7 @@ void Renderer::draw_map(const Player& player, const Map& map) {
                 continue;
             }
 
+            // 5. 건설된 건물 렌더링
             if (!tile.building_name.empty()) {
                 if (tile.building_name == "주방") std::cout << "🍳";
                 else if (tile.building_name == "작업장") std::cout << "🔨";
@@ -98,6 +103,7 @@ void Renderer::draw_map(const Player& player, const Map& map) {
                 continue;
             }
 
+            // 6. 기본 지형 (부지 등) 렌더링
             std::cout << tile_to_emoji(tile.type);
         }
         std::cout << "\n";
@@ -119,8 +125,8 @@ void Renderer::draw_menu() {
 }
 
 std::string Renderer::current_zone_name(const Player& player, const Map& map) const {
-    if (player.get_x() == Map::MINE_X && player.get_y() == Map::MINE_Y) return "⛏️ 보물 광산지대";
-
+    if (player.get_x() >= Map::MINE_X && player.get_x() <= Map::MINE_X + 1 && 
+        player.get_y() >= Map::MINE_Y && player.get_y() <= Map::MINE_Y + 1) return "⛏️ 보물 광산지대";
     const Tile& current_tile = map.get_tile(player.get_x(), player.get_y());
     if (current_tile.building_name == "주방") return "🍳 요리 주방";
     if (current_tile.building_name == "작업장") return "🔨 작업장";
@@ -133,11 +139,13 @@ std::string Renderer::current_zone_name(const Player& player, const Map& map) co
         case TileType::LIVESTOCK: return "🟫 가축 사육장";
         case TileType::FARM:      return "🟩 비옥한 농경지";
         case TileType::PATH:      return "⬜ 자갈 마당";
-        case TileType::BUILDING:  return "🏡 농장 건축 부지";
+        
         case TileType::BED:       return "🛏️ 침대";
         case TileType::MARKET:    return "🏪 피에르 잡화점";
-        case TileType::KITCHEN:   return "🍳 요리 주방";
-        case TileType::WORKSHOP:  return "🔨 작업장";
+
+        case TileType::KITCHEN:   return "🍳 주방 건축 부지";
+        case TileType::WORKSHOP:  return "🔨 작업장 건축 부지";
+        case TileType::STORAGE:   return "🏡 저장소 건축 부지";
     }
     return "?";
 }
@@ -145,15 +153,17 @@ std::string Renderer::current_zone_name(const Player& player, const Map& map) co
 std::string Renderer::tile_to_emoji(TileType type) const {
     switch (type) {
         case TileType::WATER:     return "🟦";
-        case TileType::SAND:      return "🟨";
         case TileType::LIVESTOCK: return "🟫";
         case TileType::FARM:      return "🟩";
         case TileType::PATH:      return "⬜";
-        case TileType::BUILDING:  return "🏡";
+        case TileType::SAND:      return "🟨";
+
         case TileType::BED:       return "🛏️ ";
         case TileType::MARKET:    return "🏪";
         case TileType::KITCHEN:   return "🍳";
         case TileType::WORKSHOP:  return "🔨";
+
+        case TileType::STORAGE:   return "🏡";
     }
     return "❓";
 }

@@ -8,11 +8,12 @@ enum class TileType {
     LIVESTOCK,  // 🟫 사육 공간
     FARM,       // 🟩 농업 공간
     PATH,       // ⬜ 자갈길
-    BUILDING,   // 🏡 건축 공간
+
     BED,        // 🛏️ 침대
     MARKET,     // 🏪 시장
     KITCHEN,    // 🍳 주방
-    WORKSHOP    // 🔨 작업장
+    WORKSHOP,    // 🔨 작업장
+    STORAGE     // 📦 저장소 부지
 };
 
 struct Tile {

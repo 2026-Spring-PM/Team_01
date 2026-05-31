@@ -2,6 +2,11 @@
 #include "ItemType.h"
 #include "Season.h"
 
+#include <SDL.h>
+
+#include <SDL_image.h>
+
+#include <SDL_ttf.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>

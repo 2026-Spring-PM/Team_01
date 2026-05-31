@@ -111,7 +111,8 @@ void Game::handle_action() {
     int py = player_.get_y();
     Tile& tile = map_.get_tile(px, py);
 
-    if (px == Map::MINE_X && py == Map::MINE_Y) {
+    bool is_mine = (px >= Map::MINE_X && px <= Map::MINE_X + 1 && py >= Map::MINE_Y && py <= Map::MINE_Y + 1);
+    if (is_mine) {
 #ifdef FARM_GUI
         if (gui_mode_) {
             std::string msg;
@@ -129,6 +130,7 @@ void Game::handle_action() {
     switch (tile.type) {
         case TileType::SAND:
         case TileType::WATER:
+            // (낚시 로직 기존과 동일)
 #ifdef FARM_GUI
             if (gui_mode_) {
                 std::string msg;
@@ -148,7 +150,7 @@ void Game::handle_action() {
             handle_livestock(tile);
             break;
         case TileType::BED:
-            advance_day();
+            ask_sleep();
             break;
         case TileType::MARKET:
 #ifdef FARM_GUI
@@ -164,21 +166,42 @@ void Game::handle_action() {
             renderer_.add_message("상점 이용을 마쳤습니다.");
             break;
         case TileType::KITCHEN:
+            if (!has_built_facility("주방")) handle_building(tile, "주방");
+            else {
 #ifdef FARM_GUI
-            if (gui_mode_) { handle_gui_kitchen(); break; }
+                if (gui_mode_) { handle_gui_kitchen(); break; }
 #endif
-            kitchen_.interact(player_);
-            renderer_.add_message("주방 이용을 마쳤습니다.");
+                kitchen_.interact(player_);
+                renderer_.add_message("주방 이용을 마쳤습니다.");
+            }
             break;
         case TileType::WORKSHOP:
+            if (!has_built_facility("작업장")) handle_building(tile, "작업장");
+            else {
 #ifdef FARM_GUI
-            if (gui_mode_) { handle_gui_workshop(); break; }
+                if (gui_mode_) { handle_gui_workshop(); break; }
 #endif
-            workshop_.interact(player_);
-            renderer_.add_message("작업장 이용을 마쳤습니다.");
+                workshop_.interact(player_);
+                renderer_.add_message("작업장 이용을 마쳤습니다.");
+            }
             break;
-        case TileType::BUILDING:
-            handle_building(tile);
+        case TileType::STORAGE:
+            if (!has_built_facility("저장소")) handle_building(tile, "저장소");
+            else {
+#ifdef FARM_GUI
+                if (gui_mode_) { handle_gui_storage(); break; }
+#endif
+                system("clear");
+                std::cout << "📦 [저장소 관리]\n1. 업그레이드\n0. 취소\n>> " << std::flush;
+                char sel = getch();
+                if (sel == '1') {
+                    std::string msg;
+                    upgrade_storage(msg);
+                    renderer_.add_message(msg);
+                } else {
+                    renderer_.add_message("저장소 이용을 마쳤습니다.");
+                }
+            }
             break;
         case TileType::PATH:
             renderer_.add_message("여기서는 특별히 할 수 있는 일이 없습니다.");
@@ -271,31 +294,31 @@ void Game::handle_livestock(Tile& tile) {
     renderer_.add_message(message);
 }
 
-void Game::handle_building(Tile& tile) {
+void Game::handle_building(Tile& tile, const std::string& type) {
 #ifdef FARM_GUI
-    if (gui_mode_) { handle_gui_building(tile); return; }
+    if (gui_mode_) { handle_gui_building(tile, type); return; }
 #endif
     system("clear");
-
-    if (!tile.building_name.empty()) {
-        if (tile.building_name == "주방") kitchen_.interact(player_);
-        else if (tile.building_name == "작업장") workshop_.interact(player_);
-        renderer_.add_message("건물 이용을 마쳤습니다.");
-        return;
-    }
-
-    std::cout << "🏡 [건축 부지]\n1. 주방 건설\n2. 작업장 건설\n0. 취소\n>> " << std::flush;
+    std::cout << "🏡 [" << type << " 부지]\n1. " << type << " 건설\n0. 취소\n>> " << std::flush;
     char sel = getch();
 
     if (sel == '1') {
-        if (has_built_facility("주방")) renderer_.add_message("주방은 이미 건설되어 있습니다. 하나만 지을 수 있습니다.");
-        else { tile.building_name = "주방"; tile.is_occupied = true; renderer_.add_message("주방을 건설했습니다. 🍳"); }
+        if (type == "주방") {
+            set_building_region(Map::KITCHEN_X, Map::KITCHEN_Y, "주방");
+            renderer_.add_message("주방을 건설했습니다. 🍳");
+        } else if (type == "작업장") {
+            set_building_region(Map::WORKSHOP_X, Map::WORKSHOP_Y, "작업장");
+            renderer_.add_message("작업장을 건설했습니다. 🔨");
+        } else if (type == "저장소") {
+            std::string msg;
+            if (build_storage(tile, msg)) {
+                set_building_region(Map::STORAGE_X, Map::STORAGE_Y, "저장소");
+            }
+            renderer_.add_message(msg);
+        }
+    } else {
+        renderer_.add_message("건설을 취소했습니다.");
     }
-    else if (sel == '2') {
-        if (has_built_facility("작업장")) renderer_.add_message("작업장은 이미 건설되어 있습니다. 하나만 지을 수 있습니다.");
-        else { tile.building_name = "작업장"; tile.is_occupied = true; renderer_.add_message("작업장을 건설했습니다. 🔨"); }
-    }
-    else renderer_.add_message("건설을 취소했습니다.");
 }
 
 void Game::advance_day() {
@@ -643,36 +666,31 @@ void Game::handle_gui_livestock(Tile& tile) {
     gui_renderer_.show_notice("가축 관리", msg);
 }
 
-void Game::handle_gui_building(Tile& tile) {
-    if (!tile.building_name.empty()) {
-        if (tile.building_name == "주방") handle_gui_kitchen();
-        else if (tile.building_name == "작업장") handle_gui_workshop();
-        else if (tile.building_name == "저장소") handle_gui_storage();
-        return;
-    }
-    int sel = gui_renderer_.show_choice("건축 부지", "건설할 시설을 선택하세요. 주방, 작업장, 저장소는 각각 하나만 지을 수 있습니다.", {{1, "주방"}, {2, "작업장"}, {3, "저장소"}, {0, "취소"}}, 0);
+#ifdef FARM_GUI
+void Game::handle_gui_building(Tile& tile, const std::string& type) {
+    std::string msg = type + "을(를) 건설하시겠습니까?";
+    int sel = gui_renderer_.show_choice("건축 부지", msg, {{1, type + " 건설"}, {0, "취소"}}, 0);
+    
     if (sel == 1) {
-        if (has_built_facility("주방")) {
-            std::string msg = "주방은 이미 건설되어 있습니다. 하나만 지을 수 있습니다.";
-            renderer_.add_message(msg);
-            gui_renderer_.show_notice("건설 불가", msg);
-        } else { tile.building_name = "주방"; tile.is_occupied = true; renderer_.add_message("주방을 건설했습니다. 🍳"); }
+        if (type == "주방") {
+            set_building_region(Map::KITCHEN_X, Map::KITCHEN_Y, "주방");
+            renderer_.add_message("주방을 건설했습니다. 🍳");
+        } else if (type == "작업장") {
+            set_building_region(Map::WORKSHOP_X, Map::WORKSHOP_Y, "작업장");
+            renderer_.add_message("작업장을 건설했습니다. 🔨");
+        } else if (type == "저장소") {
+            std::string out_msg;
+            if (build_storage(tile, out_msg)) {
+                set_building_region(Map::STORAGE_X, Map::STORAGE_Y, "저장소");
+            }
+            renderer_.add_message(out_msg);
+            if (out_msg.find("건설했습니다") != std::string::npos) gui_renderer_.show_notice("건설 결과", out_msg);
+        }
+    } else {
+        renderer_.add_message("건설을 취소했습니다.");
     }
-    else if (sel == 2) {
-        if (has_built_facility("작업장")) {
-            std::string msg = "작업장은 이미 건설되어 있습니다. 하나만 지을 수 있습니다.";
-            renderer_.add_message(msg);
-            gui_renderer_.show_notice("건설 불가", msg);
-        } else { tile.building_name = "작업장"; tile.is_occupied = true; renderer_.add_message("작업장을 건설했습니다. 🔨"); }
-    }
-    else if (sel == 3) {
-        std::string msg;
-        build_storage(tile, msg);
-        renderer_.add_message(msg);
-        if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
-    }
-    else renderer_.add_message("건설을 취소했습니다.");
 }
+#endif
 
 void Game::handle_gui_kitchen() {
     std::ostringstream status;
@@ -787,3 +805,27 @@ void Game::show_gui_inventory() {
     renderer_.add_message("인벤토리를 확인했습니다.");
 }
 #endif
+
+void Game::ask_sleep() {
+#ifdef FARM_GUI
+    if (gui_mode_) {
+        if (gui_renderer_.confirm("잠자기", "잠을 주무시겠습니까?")) advance_day();
+        return;
+    }
+#endif
+    system("clear");
+    std::cout << "잠을 주무시겠습니까? (Y/N): " << std::flush;
+    char ans = getch();
+    if (ans == 'y' || ans == 'Y') advance_day();
+    else renderer_.add_message("잠자기를 취소했습니다.");
+}
+
+void Game::set_building_region(int start_x, int start_y, const std::string& name) {
+    for (int y = start_y; y <= start_y + 1; ++y) {
+        for (int x = start_x; x <= start_x + 1; ++x) {
+            Tile& t = map_.get_tile(x, y);
+            t.building_name = name;
+            t.is_occupied = true;
+        }
+    }
+}

@@ -38,7 +38,9 @@ private:
     void handle_action();
     void handle_farm(Tile& tile);
     void handle_livestock(Tile& tile);
-    void handle_building(Tile& tile);
+    void handle_building(Tile& tile, const std::string& type); 
+    void set_building_region(int start_x, int start_y, const std::string& name);
+    void ask_sleep();
     void advance_day();
     void show_inventory();
     void quit();
