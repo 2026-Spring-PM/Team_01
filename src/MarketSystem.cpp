@@ -1,6 +1,6 @@
 #include "MarketSystem.h"
 #include "Input.h"
-
+#include "Season.h"
 #include <iostream>
 
 MarketSystem::MarketSystem() {
@@ -39,6 +39,22 @@ MarketSystem::MarketSystem() {
 
 void MarketSystem::start_new_day() {
     // 향후 Krobus 랜덤 등장 등 일일 상점 처리를 연결할 자리.
+}
+
+bool MarketSystem::buy_item(Player& player, std::size_t index, int qty, std::string& message) {
+    if (index >= buy_items_.size()) {
+        message = "잘못된 상품입니다.";
+        return false;
+    }
+    return buy(player, buy_items_[index], qty, message);
+}
+
+bool MarketSystem::sell_item(Player& player, std::size_t index, int qty, std::string& message) {
+    if (index >= sell_items_.size()) {
+        message = "잘못된 상품입니다.";
+        return false;
+    }
+    return sell(player, sell_items_[index], qty, message);
 }
 
 void MarketSystem::show_buy_shop(Player& player) {
@@ -127,7 +143,12 @@ bool MarketSystem::sell(Player& player, const MarketItem& item, int qty, std::st
         message = "판매할 수량이 부족합니다.";
         return false;
     }
-    int total = item.sell_price * qty;
+    float multiplier = 1.0f;
+    Season season = season_from_day(player.get_day());
+    if (item.item == ItemType::RICE && season == Season::SUMMER) multiplier = 1.5f;
+    if (item.item == ItemType::APPLE && season == Season::FALL) multiplier = 1.5f;
+    if (item.item == ItemType::WHEAT && season == Season::WINTER) multiplier = 1.3f;
+    int total = static_cast<int>(item.sell_price * qty * multiplier);
     player.remove_item(item.item, qty);
     player.add_money(total);
     message = item.name + " " + std::to_string(qty) + "개를 판매했습니다. (+" + std::to_string(total) + "G)";

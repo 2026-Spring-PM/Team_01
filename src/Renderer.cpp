@@ -93,6 +93,7 @@ void Renderer::draw_map(const Player& player, const Map& map) {
             if (!tile.building_name.empty()) {
                 if (tile.building_name == "주방") std::cout << "🍳";
                 else if (tile.building_name == "작업장") std::cout << "🔨";
+                else if (tile.building_name == "저장소") std::cout << "📦";
                 else std::cout << "🏡";
                 continue;
             }
@@ -121,8 +122,10 @@ std::string Renderer::current_zone_name(const Player& player, const Map& map) co
     if (player.get_x() == Map::MINE_X && player.get_y() == Map::MINE_Y) return "⛏️ 보물 광산지대";
 
     const Tile& current_tile = map.get_tile(player.get_x(), player.get_y());
+    if (current_tile.building_name == "상점") return "🏪 피에르 잡화점";
     if (current_tile.building_name == "주방") return "🍳 요리 주방";
     if (current_tile.building_name == "작업장") return "🔨 작업장";
+    if (current_tile.building_name == "저장소") return "📦 저장소";
 
     TileType type = current_tile.type;
     switch (type) {
@@ -159,7 +162,7 @@ std::string Renderer::tile_to_emoji(TileType type) const {
 void Renderer::draw_inventory_screen(const Player& player) {
     clear_screen();
     std::cout << "═══════════════════════════════════════════════\n";
-    std::cout << "🎒 가방 현황 (" << player.inventory().used_slots() << "/" << player.inventory().max_slots() << ")\n";
+    std::cout << "🎒 가방 현황 - 총 아이템 수 (" << player.inventory().used_slots() << "/" << player.inventory().max_slots() << ")\n";
     std::cout << "═══════════════════════════════════════════════\n";
 
     auto items = player.inventory().get_all();
@@ -182,7 +185,7 @@ void Renderer::draw_ending_screen(const Player& player) {
     std::cout << "  💰 최종 골드: " << player.get_money() << "G\n";
     std::cout << "  📈 최종 레벨: Lv." << player.get_level() << "\n";
     std::cout << "  ⚡ 최대 스태미나: " << player.get_true_stamina_max() << "\n";
-    std::cout << "  🎒 수집 아이템 종류: " << player.inventory().used_slots() << "종\n\n";
+    std::cout << "  🎒 최종 보유 아이템 수: " << player.inventory().used_slots() << "개\n\n";
     std::cout << "═══════════════════════════════════════════════\n";
 }
 

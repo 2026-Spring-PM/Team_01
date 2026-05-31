@@ -20,6 +20,13 @@ struct Tile {
 
     bool is_occupied = false;
     std::string building_name;
+    // 2x2 건물 렌더링/상호작용용 메타데이터
+    bool building_origin = false;
+    int building_origin_x = -1;
+    int building_origin_y = -1;
+    int building_level = 1;
+    // 건물 바로 앞 문 타일. 플레이어는 건물 위가 아니라 문 앞에서만 이용한다.
+    std::string door_target_name;
 
     // crop_id: 0 없음, 1 감자, 2 당근, 3 밀, 4 쌀, 5 사과나무
     int crop_id = 0;
@@ -40,6 +47,8 @@ struct Tile {
         // 농경지와 사육장은 작물/가축이 있어도 플레이어가 들어가 상호작용할 수 있게 둔다.
         if (type == TileType::WATER) return false;
         if (type == TileType::SAND) return true; // 강변에서 낚시 가능
+        // 건설된 2x2 건물 위로는 이동할 수 없다. 문 앞 타일에서만 상호작용한다.
+        if (!building_name.empty() && is_occupied) return false;
         return true;
     }
 

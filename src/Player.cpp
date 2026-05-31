@@ -9,13 +9,26 @@ Player::Player()
       stamina_(LevelSystem::INITIAL_STAMINA),
       day_(1),
       tool_grade_(0),
+      storage_level_(0),
+      facing_('f'),
       stamina_limit_(0),
       sick_today_(false),
       level_system_(),
       inventory_(INITIAL_INVENTORY_SLOTS),
       name_("초보 농부") {}
 
+
+void Player::set_position(int x, int y) {
+    x_ = std::max(0, std::min(Map::WIDTH - 1, x));
+    y_ = std::max(0, std::min(Map::HEIGHT - 1, y));
+}
+
 bool Player::try_move(int dx, int dy, const Map& map) {
+    if (dy < 0) facing_ = 'b';
+    else if (dy > 0) facing_ = 'f';
+    else if (dx < 0) facing_ = 'l';
+    else if (dx > 0) facing_ = 'r';
+
     int new_x = x_ + dx;
     int new_y = y_ + dy;
     if (!map.is_in_bounds(new_x, new_y)) return false;
@@ -52,13 +65,23 @@ bool Player::use_stamina(int cost) {
     return true;
 }
 
+void Player::restore_stamina(int amount) {
+    if (amount <= 0) return;
+    stamina_ = std::min(get_stamina_max(), stamina_ + amount);
+}
+
 bool Player::add_exp(int exp) {
     bool leveled = level_system_.add_exp(exp);
     if (leveled) {
         stamina_ = get_stamina_max();
-        inventory_.expand(2);
+        levelup_message_ = "레벨업! Lv." + std::to_string(get_level()) + " 달성! 스태미나 MAX 회복!";
+
     }
     return leveled;
+}
+
+void Player::expand_inventory_slots(int additional) {
+    inventory_.expand(additional);
 }
 
 bool Player::add_item(ItemType type, int qty) {
@@ -71,6 +94,12 @@ bool Player::remove_item(ItemType type, int qty) {
 
 int Player::count_item(ItemType type) const {
     return inventory_.count(type);
+}
+
+void Player::set_storage_level(int level) {
+    if (level < 0) level = 0;
+    if (level > 3) level = 3;
+    storage_level_ = level;
 }
 
 void Player::set_tool_grade(int grade) {

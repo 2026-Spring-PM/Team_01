@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <sstream>
 
+static constexpr int LIVESTOCK_ACTION_STAMINA = 10;
+
 static const LivestockInfo LIVESTOCKS[] = {
     {1, ItemType::BABY_CHICKEN, ItemType::EGG,  "닭", 3, 1, 10, 10, false},
     {2, ItemType::BABY_PIG,     ItemType::PORK, "돼지", 5, 2, 20, 30, true},
@@ -47,6 +49,10 @@ bool LivestockSystem::place_animal(Player& player, Tile& tile, int animal_type, 
         message = std::string(item_name(info->baby_item)) + "을(를) 보유하고 있지 않습니다.";
         return false;
     }
+    if (!player.use_stamina(LIVESTOCK_ACTION_STAMINA)) {
+        message = "스태미나가 부족합니다. (필요: " + std::to_string(LIVESTOCK_ACTION_STAMINA) + ")";
+        return false;
+    }
 
     player.remove_item(info->baby_item, 1);
     tile.is_occupied = true;
@@ -56,7 +62,7 @@ bool LivestockSystem::place_animal(Player& player, Tile& tile, int animal_type, 
     tile.animal_adult_age = info->adult_age;
     tile.animal_produced_today = false;
 
-    message = std::string("새끼 ") + info->name + "을(를) 사육장에 배치했습니다.";
+    message = std::string("새끼 ") + info->name + "을(를) 사육장에 배치했습니다. 스태미나 -" + std::to_string(LIVESTOCK_ACTION_STAMINA);
     return true;
 }
 
@@ -79,11 +85,12 @@ bool LivestockSystem::collect_product(Player& player, Tile& tile, std::string& m
         message = "이 가축은 오늘 이미 생산을 마쳤습니다.";
         return false;
     }
-    if (!player.use_stamina(info->stamina_cost)) {
-        message = "스태미나가 부족합니다. (필요: " + std::to_string(info->stamina_cost) + ")";
+    if (!player.use_stamina(LIVESTOCK_ACTION_STAMINA)) {
+        message = "스태미나가 부족합니다. (필요: " + std::to_string(LIVESTOCK_ACTION_STAMINA) + ")";
         return false;
     }
     if (!player.add_item(info->product_item, info->product_amount)) {
+        player.restore_stamina(LIVESTOCK_ACTION_STAMINA);
         message = "가방 공간이 부족합니다.";
         return false;
     }
@@ -93,7 +100,7 @@ bool LivestockSystem::collect_product(Player& player, Tile& tile, std::string& m
 
     std::ostringstream oss;
     oss << info->name << "에게서 " << item_name(info->product_item) << " " << info->product_amount
-        << "개를 얻었습니다. XP +" << info->xp << ", 스태미나 -" << info->stamina_cost;
+        << "개를 얻었습니다. XP +" << info->xp << ", 스태미나 -" << LIVESTOCK_ACTION_STAMINA;
 
     if (info->remove_after_product) {
         tile.animal_placed = false;
@@ -135,13 +142,17 @@ bool LivestockSystem::hatch_egg(Player& player, std::string& message) {
         message = "부화시킬 달걀이 없습니다.";
         return false;
     }
+    if (!player.use_stamina(LIVESTOCK_ACTION_STAMINA)) {
+        message = "스태미나가 부족합니다. (필요: " + std::to_string(LIVESTOCK_ACTION_STAMINA) + ")";
+        return false;
+    }
     player.remove_item(ItemType::EGG, 1);
     int dice = std::rand() % 100;
     if (dice < 35) {
         player.add_item(ItemType::BABY_CHICKEN, 1);
-        message = "부화 성공! 새끼 닭을 얻었습니다. 🐣";
+        message = "부화 성공! 새끼 닭을 얻었습니다. 스태미나 -" + std::to_string(LIVESTOCK_ACTION_STAMINA);
         return true;
     }
-    message = "부화에 실패했습니다. 달걀은 사라졌습니다.";
+    message = "부화에 실패했습니다. 달걀은 사라졌습니다. 스태미나 -" + std::to_string(LIVESTOCK_ACTION_STAMINA);
     return false;
 }

@@ -15,6 +15,7 @@ public:
     void draw_inventory_screen(const Player& player);
     void draw_ending_screen(const Player& player);
     void add_message(const std::string& msg);
+    const std::string& last_message() const { return last_message_; }
 
 private:
     std::string last_message_;

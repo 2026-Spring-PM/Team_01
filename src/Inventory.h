@@ -11,13 +11,9 @@ public:
 
     bool add(const T& item, int amount = 1) {
         if (amount <= 0) return false;
-        auto it = items_.find(item);
-        if (it != items_.end()) {
-            it->second += amount;
-            return true;
-        }
-        if (static_cast<int>(items_.size()) >= max_slots_) return false;
-        items_[item] = amount;
+        // v9: inventory capacity is based on total item count, not unique item types.
+        if (used_slots() + amount > max_slots_) return false;
+        items_[item] += amount;
         return true;
     }
 
@@ -35,8 +31,15 @@ public:
         return it == items_.end() ? 0 : it->second;
     }
 
-    int used_slots() const { return static_cast<int>(items_.size()); }
+    int used_slots() const {
+        int total = 0;
+        for (const auto& pair : items_) total += pair.second;
+        return total;
+    }
+    int unique_item_count() const { return static_cast<int>(items_.size()); }
     int max_slots() const { return max_slots_; }
+    int free_slots() const { return max_slots_ - used_slots(); }
+    bool can_add(int amount = 1) const { return amount > 0 && used_slots() + amount <= max_slots_; }
     bool is_full() const { return used_slots() >= max_slots_; }
     void expand(int additional) { if (additional > 0) max_slots_ += additional; }
 

@@ -10,6 +10,15 @@ void WorkshopSystem::interact(Player& player) {
     show_menu(player);
 }
 
+bool WorkshopSystem::perform_action(Player& player, int action, std::string& message) {
+    if (action == 1) return upgrade_workshop(player, message);
+    if (action == 2) return upgrade_tool(player, 1, message);
+    if (action == 3) return upgrade_tool(player, 2, message);
+    if (action == 4) return upgrade_tool(player, 3, message);
+    message = "잘못된 선택입니다.";
+    return false;
+}
+
 void WorkshopSystem::show_menu(Player& player) {
     while (true) {
         system("clear");

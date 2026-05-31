@@ -10,6 +10,15 @@ void KitchenSystem::interact(Player& player) {
     show_menu(player);
 }
 
+bool KitchenSystem::perform_action(Player& player, int action, std::string& message) {
+    if (action == 1) return cook_bread(player, message);
+    if (action == 2) return cook_grilled_fish(player, message);
+    if (action == 3) return cook_apple_pie(player, message);
+    if (action == 4) return upgrade(player, message);
+    message = "잘못된 선택입니다.";
+    return false;
+}
+
 void KitchenSystem::show_menu(Player& player) {
     while (true) {
         system("clear");

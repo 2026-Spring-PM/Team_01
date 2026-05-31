@@ -21,6 +21,11 @@ public:
     void show_buy_shop(Player& player);
     void show_sell_shop(Player& player);
 
+    const std::vector<MarketItem>& buy_items() const { return buy_items_; }
+    const std::vector<MarketItem>& sell_items() const { return sell_items_; }
+    bool buy_item(Player& player, std::size_t index, int qty, std::string& message);
+    bool sell_item(Player& player, std::size_t index, int qty, std::string& message);
+
 private:
     std::vector<MarketItem> buy_items_;
     std::vector<MarketItem> sell_items_;

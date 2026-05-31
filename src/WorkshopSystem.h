@@ -9,6 +9,7 @@ public:
 
     void interact(Player& player);
     int get_level() const { return level_; }
+    bool perform_action(Player& player, int action, std::string& message); // 1 증축, 2 구리, 3 철, 4 금
 
 private:
     int level_;
