@@ -55,9 +55,9 @@ bool LevelSystem::is_bonus_level(int level) {
 }
 
 void LevelSystem::on_level_up() {
-    // 기본 +1, 보너스 레벨에서 추가 +2
+    // 기본 +1, 보너스 레벨에서 추가 +1
     max_stamina_ += 1;
     if (is_bonus_level(level_)) {
-        max_stamina_ += 2;
+        max_stamina_ += 1;
     }
 }

@@ -3,7 +3,7 @@
 class LevelSystem {
 public:
     static constexpr int MAX_LEVEL = 30;
-    static constexpr int INITIAL_STAMINA = 20; // 기본 스태미나 20 (1/10 스케일)
+    static constexpr int INITIAL_STAMINA = 10; // 기본 스태미나 20 (1/10 스케일)
 
     LevelSystem();
 

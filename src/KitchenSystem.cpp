@@ -73,6 +73,7 @@ void KitchenSystem::interact(Player& player) {
 // ── 메인 메뉴 ────────────────────────────────────────────────
 void KitchenSystem::show_menu(Player& player) {
     std::vector<ItemType> selected;
+    std::string msg = "";
 
     while (true) {
         system("clear");
@@ -80,6 +81,7 @@ void KitchenSystem::show_menu(Player& player) {
         std::cout << "현재 주방 레벨: Lv." << level_ << " / " << MAX_LEVEL << "\n";
         std::cout << "💰 보유 골드: " << player.get_money() << "G"
                   << "  ⚡ 스태미나: " << player.get_stamina() << "/" << player.get_stamina_max() << "\n";
+        
         std::cout << "───────────────────────────────────────────────\n";
 
         // ── 업그레이드 항목 ──
@@ -126,15 +128,15 @@ void KitchenSystem::show_menu(Player& player) {
         static const KeyItem KEY_MAP[] = {
             {'a', ItemType::POTATO,        "감자"},
             {'b', ItemType::CARROT,        "당근"},
-            {'d', ItemType::WHEAT,         "밀"},       // 'c'는 초기화
-            {'e', ItemType::RICE,          "쌀"},
-            {'f', ItemType::EGG,           "달걀"},
-            {'g', ItemType::MILK,          "우유"},
-            {'h', ItemType::PORK,          "돼지고기"},
-            {'i', ItemType::APPLE,         "사과"},
-            {'j', ItemType::FISH_MACKEREL, "고등어"},
-            {'k', ItemType::FISH_FLATFISH, "광어"},
-            {'l', ItemType::FISH_TUNA,     "참치"},
+            {'c', ItemType::WHEAT,         "밀"},       // 'c'는 초기화
+            {'d', ItemType::RICE,          "쌀"},
+            {'e', ItemType::EGG,           "달걀"},
+            {'f', ItemType::MILK,          "우유"},
+            {'g', ItemType::PORK,          "돼지고기"},
+            {'h', ItemType::APPLE,         "사과"},
+            {'i', ItemType::FISH_MACKEREL, "고등어"},
+            {'j', ItemType::FISH_FLATFISH, "광어"},
+            {'k', ItemType::FISH_TUNA,     "참치"},
         };
         for (const auto& ki : KEY_MAP) {
             int have = player.count_item(ki.type);
@@ -156,15 +158,41 @@ void KitchenSystem::show_menu(Player& player) {
                 std::cout << item_name(p.first) << "×" << p.second;
                 first = false;
             }
-            std::string preview = get_recipe_name(selected);
-            if (!preview.empty())
+
+            std::string preview = "";
+            bool is_unlocked = false;
+
+            // 전체 레시피를 돌며 현재 선택한 재료와 일치하는 레시피를 탐색
+            std::vector<ItemType> sorted_sel = selected;
+            std::sort(sorted_sel.begin(), sorted_sel.end());
+
+            for (int i = 0; i < RECIPE_COUNT; ++i) {
+                std::vector<ItemType> r_ings = RECIPES[i].ingredients;
+                std::sort(r_ings.begin(), r_ings.end());
+                
+                if (sorted_sel == r_ings) {
+                    // 일치하는 레시피를 찾았을 때, 내 주방 레벨 이하(해금됨)인 경우에만 이름을 오픈!
+                    if (RECIPES[i].kitchen_level <= level_) {
+                        preview = RECIPES[i].name;
+                        is_unlocked = true;
+                    }
+                    break;
+                }
+            }
+
+            // UI 출력 분기 처리
+            if (is_unlocked && !preview.empty()) {
+                // 해금된 정상 레시피일 때만 진짜 이름 출력
                 std::cout << "  →  \"" << preview << "\"";
-            else if (selected.size() >= 2)
-                std::cout << "  →  \"???\" (괴식)";
+            } else if (selected.size() >= 2) {
+                // 레시피가 없거나, 존재하더라도 아직 주방 레벨이 낮아 미해금 상태라면 무조건 "???" 처리
+                std::cout << "  →  \"???\"";
+            }
         }
+
         std::cout << "\n";
         std::cout << "───────────────────────────────────────────────\n";
-        std::cout << "[Enter] 요리 시작  [c] 슬롯 초기화  [0] 나가기\n>> " << std::flush;
+        std::cout << "[x] 요리 시작  [z] 슬롯 초기화  [0] 나가기\n>> " << std::flush;
 
         char input = getch();
 
@@ -202,25 +230,50 @@ void KitchenSystem::show_menu(Player& player) {
         }
 
         // ── 슬롯 초기화 ──
-        if (input == 'c') { selected.clear(); continue; }
+        if (input == 'z' || input == 'Z') { selected.clear(); continue; }
 
         // ── Enter → 요리 시도 ──
-        if (input == '\n' || input == '\r' || input == 10 || input == 13) {
+        if (input == 'x' || input == 'X') {
             if (selected.size() < 2) {
                 std::cout << "\n재료를 최소 2개 이상 선택해야 합니다.\n";
                 wait_key();
                 continue;
             }
-            std::string preview = get_recipe_name(selected);
-            std::string label = preview.empty() ? "(괴식)" : preview;
-            std::cout << "\n요리할까요? [" << label << "] [y/n]: ";
+
+            std::string preview_name = "";
+            std::vector<ItemType> sorted_sel = selected;
+            std::sort(sorted_sel.begin(), sorted_sel.end());
+            
+            for (int i = 0; i < RECIPE_COUNT; ++i) {
+                std::vector<ItemType> r_ings = RECIPES[i].ingredients;
+                std::sort(r_ings.begin(), r_ings.end());
+                // 조합도 맞고, 내 주방 레벨 이하로 '해금'까지 완벽히 된 경우에만 이름 오픈
+                if (sorted_sel == r_ings && RECIPES[i].kitchen_level <= level_) {
+                    preview_name = RECIPES[i].name;
+                    break;
+                }
+            }
+            
+            // 미해금 레시피이거나 틀린 조합(괴식)이면 무조건 "???"로 표시 처리 (요청 사양 반영)
+            std::string label = preview_name.empty() ? "???" : preview_name;
+            
+            // 2. [UI 개선] 화면을 더럽히지 않고 맨 밑에 질문을 띄우기 위해 힌트 출력 후 바로 대기
+            std::cout << "요리할까요? [" << label << "] [y/n]: " << std::flush;
+            
+            // 버퍼 꼬임 방지를 위해 getch()로 즉시 한 글자만 입력받음
             char ans = getch();
             if (ans == 'y' || ans == 'Y') {
-                std::string msg;
                 cook(player, selected, msg);
-                std::cout << "\n" << msg << "\n";
-                wait_key();
                 selected.clear();
+
+                if (!msg.empty()) {
+                    std::cout << "\n📢 " << msg << "\n";
+                    msg = ""; // 출력했으니 비워주기
+                    wait_key(); // 유저가 결과를 다 읽고 키를 누르면 그때 주방 UI가 갱신됨
+                }
+            } else {
+                std::cout << "\n요리를 취소했습니다.\n";
+                wait_key();
             }
             continue;
         }
@@ -297,18 +350,24 @@ bool KitchenSystem::cook(Player& player, std::vector<ItemType> inputs, std::stri
     for (int i = 0; i < RECIPE_COUNT; ++i) {
         std::vector<ItemType> r_ings = RECIPES[i].ingredients;
         std::sort(r_ings.begin(), r_ings.end());
+        
+        // 1. 우선 조합법이 맞는지 확인
         if (sorted_inputs == r_ings) {
+            // 2. 조합은 맞는데 주방 레벨이 부족한 경우 (★ 이 부분 수정)
             if (level_ < RECIPES[i].kitchen_level) {
                 player.restore_stamina(2); // 스태미나 환불
-                message = "주방 Lv." + std::to_string(RECIPES[i].kitchen_level)
-                          + " 이상에서 만들 수 있습니다.";
-                return false;
+                message = "❌ 해금되지 않은 레시피입니다. (요구 주방 Lv." + std::to_string(RECIPES[i].kitchen_level) + ")";
+                return false; // ◀ 여기서 false를 리턴해 가방에서 재료가 사라지지 않고 요리가 중단됩니다!
             }
+            
+            // 3. 주방 레벨까지 완벽해서 요리에 성공한 경우
             for (auto ing : inputs) player.remove_item(ing, 1);
             player.add_item(RECIPES[i].result, 1);
-            player.add_exp(15);
-            message = "✅ " + RECIPES[i].name + " 완성!  판매가: "
-                      + std::to_string(RECIPES[i].sell_price) + "G  XP +15";
+            player.add_exp(10);
+            
+            // ★ 성공 시 무엇이 만들어졌는지 메시지에 명확하게 저장
+            message = "🎉 요리 성공! [" + RECIPES[i].name + "]을(를) 만들었습니다! (판매가: "
+                      + std::to_string(RECIPES[i].sell_price) + "G / XP +10)";
             return true;
         }
     }
@@ -336,10 +395,10 @@ bool KitchenSystem::cook(Player& player, std::vector<ItemType> inputs, std::stri
 
     for (auto ing : inputs) player.remove_item(ing, 1);
     player.add_item(monster_type, 1);
-    player.add_exp(5);
+    player.add_exp(10);
     message = "레시피가 없군요... 기묘한 " + monster_name + "이(가) 완성되었습니다!\n"
               "  ※ 상점에 가서 판매를 시도할 수 있습니다. (기본 판매가: "
-              + std::to_string(monster_sell) + "G, 성공률 20%)";
+              + std::to_string(monster_sell) + "G, 성공률 20% / XP +10)";
     return true;
 }
 
