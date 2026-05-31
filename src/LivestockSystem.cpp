@@ -6,9 +6,9 @@
 static constexpr int LIVESTOCK_ACTION_STAMINA = 1;
 
 static const LivestockInfo LIVESTOCKS[] = {
-    {1, ItemType::BABY_CHICKEN, ItemType::EGG,  "닭", 3, 1, 10, 10, false},
-    {2, ItemType::BABY_PIG,     ItemType::PORK, "돼지", 5, 2, 20, 30, true},
-    {3, ItemType::BABY_COW,     ItemType::MILK, "소", 4, 1, 15, 20, false}
+    {1, ItemType::BABY_CHICKEN, ItemType::EGG,  "닭", 3, 1, 10, 2, false},
+    {2, ItemType::BABY_PIG,     ItemType::PORK, "돼지", 5, 2, 20, 5, true},
+    {3, ItemType::BABY_COW,     ItemType::MILK, "소", 4, 1, 15, 6, false}
 };
 
 const LivestockInfo* LivestockSystem::get_info(int animal_type) {
