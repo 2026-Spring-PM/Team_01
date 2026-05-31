@@ -104,10 +104,10 @@ void Player::set_tool_grade(int grade) {
 
 int Player::get_harvest_stamina_cost() const {
     switch (tool_grade_) {
-        case 1: return 7;
-        case 2: return 5;
-        case 3: return 2;
-        default: return 10;
+        case 1: return 2;
+        case 2: return 1;
+        case 3: return 0;
+        default: return 3;
     }
 }
 

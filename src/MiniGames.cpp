@@ -68,7 +68,7 @@ void play_fishing(Player& player) {
         return;
     }
 
-    if (!player.use_stamina(30)) {
+    if (!player.use_stamina(5)) {
         std::cout << "\n스태미나가 부족합니다. (필요: 30)\n";
         wait_key();
         clear_console();
@@ -137,7 +137,7 @@ void play_lotto_mining(Player& player) {
         return;
     }
 
-    if (!player.use_stamina(30)) {
+    if (!player.use_stamina(5)) {
         std::cout << "\n스태미나가 부족합니다. (필요: 30)\n";
         wait_key();
         return;

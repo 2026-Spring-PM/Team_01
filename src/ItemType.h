@@ -40,10 +40,16 @@ enum class ItemType {
     FISH_FLATFISH,
     FISH_TUNA,
 
-    // 요리
-    BREAD,
-    GRILLED_FISH,
-    APPLE_PIE
+    // 보물상자 (새로 추가)
+    TREASURE_BOX_BASIC,
+    TREASURE_BOX_NORMAL,
+    TREASURE_BOX_ADVANCED,
+
+    // 요리 (기존 빵 등 삭제, 1~4단계 요리 12종 추가)
+    FOOD_POTATO_SOUP, FOOD_CARROT_EGG_ROLL, FOOD_MACKEREL_STEW,
+    FOOD_PORK_STEW, FOOD_POTATO_PANCAKE, FOOD_FLATFISH_STEAK,
+    FOOD_CARROT_RICE, FOOD_BEEF_STEAK, FOOD_APPLE_JUICE,
+    FOOD_TUNA_STEAK, FOOD_HAYASHI_RICE, FOOD_APPLE_MOUSSE
 };
 
 inline std::string item_name(ItemType type) {
@@ -77,9 +83,22 @@ inline std::string item_name(ItemType type) {
         case ItemType::FISH_FLATFISH:  return "🐠 광어";
         case ItemType::FISH_TUNA:      return "🐋 참치";
 
-        case ItemType::BREAD:          return "🥖 빵";
-        case ItemType::GRILLED_FISH:   return "🍽️ 생선구이";
-        case ItemType::APPLE_PIE:      return "🥧 사과파이";
+        case ItemType::TREASURE_BOX_BASIC:    return "📦 초급 보물상자";
+        case ItemType::TREASURE_BOX_NORMAL:   return "📦 중급 보물상자";
+        case ItemType::TREASURE_BOX_ADVANCED: return "📦 고급 보물상자";
+
+        case ItemType::FOOD_POTATO_SOUP:      return "🍲 감자 수프";
+        case ItemType::FOOD_CARROT_EGG_ROLL:  return "🍳 당근 달걀 롤";
+        case ItemType::FOOD_MACKEREL_STEW:    return "🍲 고등어 당근 조림";
+        case ItemType::FOOD_PORK_STEW:        return "🍲 돼지고기 감자 짜글이";
+        case ItemType::FOOD_POTATO_PANCAKE:   return "🥞 감자 밀 부침개";
+        case ItemType::FOOD_FLATFISH_STEAK:   return "🍽️ 당근 광어 스테이크";
+        case ItemType::FOOD_CARROT_RICE:      return "🍚 3색 당근 쌀밥";
+        case ItemType::FOOD_BEEF_STEAK:       return "🥩 매쉬드 비프 스테이크";
+        case ItemType::FOOD_APPLE_JUICE:      return "🧃 당근 사과 주스 만찬";
+        case ItemType::FOOD_TUNA_STEAK:       return "👑 참치 가니쉬 스테이크";
+        case ItemType::FOOD_HAYASHI_RICE:     return "🍛 특선 하이라이스 만찬";
+        case ItemType::FOOD_APPLE_MOUSSE:     return "🍰 사과 감자 무스 케이크";
     }
     return "알 수 없는 아이템";
 }

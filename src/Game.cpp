@@ -204,7 +204,18 @@ void Game::handle_action() {
             }
             break;
         case TileType::PATH:
-            renderer_.add_message("여기서는 특별히 할 수 있는 일이 없습니다.");
+            if (tile.has_wild_tree) {
+                if (!player_.use_stamina(2)) { // 스태미나 스케일 다운에 맞춰 2 소모
+                    renderer_.add_message("스태미나가 부족하여 나무를 벨 수 없습니다. (필요: 2)");
+                } else {
+                    tile.has_wild_tree = false;
+                    tile.is_occupied = false;
+                    player_.add_item(ItemType::WOOD, 1);
+                    renderer_.add_message("야생 나무를 베어 나무 1개를 얻었습니다! 🪵 (-스태미나 2)");
+                }
+            } else {
+                renderer_.add_message("여기서는 특별히 할 수 있는 일이 없습니다.");
+            }
             break;
     }
 }

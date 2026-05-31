@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <sstream>
 
-static constexpr int LIVESTOCK_ACTION_STAMINA = 10;
+static constexpr int LIVESTOCK_ACTION_STAMINA = 1;
 
 static const LivestockInfo LIVESTOCKS[] = {
     {1, ItemType::BABY_CHICKEN, ItemType::EGG,  "닭", 3, 1, 10, 10, false},

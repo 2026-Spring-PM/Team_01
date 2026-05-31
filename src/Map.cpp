@@ -37,6 +37,7 @@ Map::Map() : tiles_(HEIGHT, std::vector<Tile>(WIDTH)), out_of_bounds_tile_{} {
     fill_region(tiles_, KITCHEN_X, KITCHEN_Y, KITCHEN_X + 1, KITCHEN_Y + 1, TileType::KITCHEN);
     fill_region(tiles_, WORKSHOP_X, WORKSHOP_Y, WORKSHOP_X + 1, WORKSHOP_Y + 1, TileType::WORKSHOP);
     fill_region(tiles_, STORAGE_X, STORAGE_Y, STORAGE_X + 1, STORAGE_Y + 1, TileType::STORAGE);
+    spawn_wild_trees();
 }
 
 const Tile& Map::get_tile(int x, int y) const {
@@ -62,6 +63,7 @@ void Map::advance_day() {
             tile.watered_today = false;
         }
     }
+    spawn_wild_trees(); 
 }
 
 void Map::kill_unwatered_crops_during_drought() {
@@ -77,5 +79,38 @@ void Map::kill_unwatered_crops_during_drought() {
                 tile.is_occupied = tile.has_animal() || !tile.building_name.empty();
             }
         }
+    }
+}
+void Map::spawn_wild_trees() {
+    int current_trees = 0;
+    std::vector<std::pair<int, int>> valid_paths;
+
+    // 현재 나무 개수 파악 및 심을 수 있는 빈 타일(PATH) 목록 수집
+    for (int y = 0; y < HEIGHT; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            if (tiles_[y][x].has_wild_tree) {
+                current_trees++;
+            } else if (tiles_[y][x].type == TileType::PATH &&
+                       !tiles_[y][x].is_occupied &&
+                       tiles_[y][x].building_name.empty()) {
+                valid_paths.push_back({x, y});
+            }
+        }
+    }
+
+    int MAX_TREES = 7;
+    int to_spawn = MAX_TREES - current_trees;
+
+    // 빈 타일 중 무작위로 골라 나무 생성
+    for (int i = 0; i < to_spawn && !valid_paths.empty(); ++i) {
+        int idx = std::rand() % valid_paths.size();
+        int rx = valid_paths[idx].first;
+        int ry = valid_paths[idx].second;
+
+        tiles_[ry][rx].has_wild_tree = true;
+        tiles_[ry][rx].is_occupied = true; // 이동 불가 처리
+
+        // 방금 나무를 심은 곳은 목록에서 제거
+        valid_paths.erase(valid_paths.begin() + idx);
     }
 }

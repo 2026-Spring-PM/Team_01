@@ -3,7 +3,7 @@
 class LevelSystem {
 public:
     static constexpr int MAX_LEVEL = 30;
-    static constexpr int INITIAL_STAMINA = 150;
+    static constexpr int INITIAL_STAMINA = 20;
 
     LevelSystem();
 

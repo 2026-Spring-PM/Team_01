@@ -21,6 +21,7 @@ struct Tile {
 
     bool is_occupied = false;
     std::string building_name;
+    bool has_wild_tree = false; // 새로 추가!
 
     // crop_id: 0 없음, 1 감자, 2 당근, 3 밀, 4 쌀, 5 사과나무
     int crop_id = 0;

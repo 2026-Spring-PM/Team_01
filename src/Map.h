@@ -34,7 +34,7 @@ public:
 
     void advance_day();
     void kill_unwatered_crops_during_drought();
-
+    void spawn_wild_trees();
 private:
     std::vector<std::vector<Tile>> tiles_;
     Tile out_of_bounds_tile_;

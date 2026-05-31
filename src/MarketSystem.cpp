@@ -28,9 +28,7 @@ MarketSystem::MarketSystem() {
         {ItemType::FISH_MACKEREL, "고등어", 0, 40, 1},
         {ItemType::FISH_FLATFISH, "광어", 0, 75, 1},
         {ItemType::FISH_TUNA,     "참치", 0, 250, 1},
-        {ItemType::BREAD,         "빵", 0, 100, 1},
-        {ItemType::APPLE_PIE,     "사과파이", 0, 350, 1},
-        {ItemType::GRILLED_FISH,  "생선구이", 0, 120, 1},
+
         {ItemType::COPPER,        "구리 광석", 0, 15, 1},
         {ItemType::IRON,          "철 광석", 0, 30, 1},
         {ItemType::GOLD,          "금 광석", 0, 75, 1}

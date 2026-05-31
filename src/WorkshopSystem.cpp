@@ -61,9 +61,9 @@ bool WorkshopSystem::upgrade_workshop(Player& player, std::string& message) {
     int need_gold = 0;
     int need_stamina = 0;
 
-    if (level_ == 0) { need_level = 6; need_gold = 200; need_stamina = 80; }
-    else if (level_ == 1) { need_level = 10; need_gold = 600; need_stamina = 150; }
-    else { need_level = 15; need_gold = 1200; need_stamina = 200; }
+    if (level_ == 0) { need_level = 6; need_gold = 200; need_stamina = 8; }
+    else if (level_ == 1) { need_level = 10; need_gold = 600; need_stamina = 15; }
+    else { need_level = 15; need_gold = 1200; need_stamina = 20; }
 
     if (player.get_level() < need_level) {
         message = "레벨이 부족합니다. (필요 Lv." + std::to_string(need_level) + ")";
@@ -107,8 +107,8 @@ bool WorkshopSystem::upgrade_tool(Player& player, int target_grade, std::string&
         message = "재료 또는 골드가 부족합니다.";
         return false;
     }
-    if (!player.use_stamina(30)) {
-        message = "스태미나가 부족합니다. (필요: 30)";
+    if (!player.use_stamina(3)) {
+        message = "스태미나가 부족합니다. (필요: 3)";
         return false;
     }
 

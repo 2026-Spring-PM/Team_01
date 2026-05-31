@@ -14,8 +14,8 @@ static const CropInfo CROPS[] = {
 };
 
 static constexpr int PERENNIAL_COOLDOWN = 3; // 다년생 작물 재성장 대기 일수
-static constexpr int PLANT_STAMINA_COST = 10;
-static constexpr int WATER_STAMINA_COST = 20;
+static constexpr int PLANT_STAMINA_COST = 1;
+static constexpr int WATER_STAMINA_COST = 2;
 
 const CropInfo* CropSystem::get_crop_info(int crop_id) {
     for (const auto& info : CROPS) {

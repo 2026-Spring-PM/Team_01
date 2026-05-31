@@ -91,6 +91,11 @@ void Renderer::draw_map(const Player& player, const Map& map) {
                     else if (tile.animal_type == 3) std::cout << "🐂";
                     else std::cout << "🐾";
                 }
+
+                if (tile.has_wild_tree) {
+                std::cout << "🌲";
+                continue;
+                }
                 continue;
             }
 

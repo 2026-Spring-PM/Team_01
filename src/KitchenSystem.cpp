@@ -73,7 +73,7 @@ bool KitchenSystem::cook_bread(Player& player, std::string& message) {
         return false;
     }
     player.remove_item(ItemType::WHEAT, 2);
-    player.add_item(ItemType::BREAD, 1);
+    // player.add_item(ItemType::BREAD, 1);
     player.add_exp(20);
     message = "빵을 만들었습니다. XP +20";
     return true;
@@ -89,7 +89,7 @@ bool KitchenSystem::cook_grilled_fish(Player& player, std::string& message) {
         return false;
     }
     player.remove_item(ItemType::FISH_MACKEREL, 1);
-    player.add_item(ItemType::GRILLED_FISH, 1);
+    // player.add_item(ItemType::GRILLED_FISH, 1);
     player.add_exp(30);
     message = "생선구이를 만들었습니다. XP +30";
     return true;
@@ -110,7 +110,7 @@ bool KitchenSystem::cook_apple_pie(Player& player, std::string& message) {
     }
     player.remove_item(ItemType::WHEAT, 2);
     player.remove_item(ItemType::APPLE, 3);
-    player.add_item(ItemType::APPLE_PIE, 1);
+    // player.add_item(ItemType::APPLE_PIE, 1);
     player.add_exp(50);
     message = "사과파이를 만들었습니다. XP +50";
     return true;
