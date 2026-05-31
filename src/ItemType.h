@@ -83,6 +83,10 @@ inline std::string item_name(ItemType type) {
         case ItemType::IRON:           return "🥈 철 광석";
         case ItemType::GOLD:           return "🥇 금 광석";
 
+        case ItemType::BREAD:           return "🍞 빵(구버전)";
+        case ItemType::GRILLED_FISH:    return "🐟 생선구이(구버전)";
+        case ItemType::APPLE_PIE:       return "🥧 사과파이(구버전)";
+        
         case ItemType::FISH_MACKEREL:  return "🐟 고등어";
         case ItemType::FISH_FLATFISH:  return "🐠 광어";
         case ItemType::FISH_TUNA:      return "🐋 참치";

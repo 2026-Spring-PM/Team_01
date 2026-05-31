@@ -17,5 +17,5 @@ private:
 
     void show_menu(Player& player);
     bool upgrade_workshop(Player& player, std::string& message);
-    bool upgrade_tool(Player& player, int target_grade, std::string& message);
+    bool upgrade_tool(Player& player, int target_grade, int tool_type, std::string& message);
 };

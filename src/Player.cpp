@@ -8,7 +8,9 @@ Player::Player()
       money_(INITIAL_MONEY),
       stamina_(LevelSystem::INITIAL_STAMINA),
       day_(1),
-      tool_grade_(0),
+      hoe_grade_(0),              // 초기화
+      fishing_rod_grade_(0),       // 초기화
+      pickaxe_grade_(0),          // 초기화
       storage_level_(0),
       facing_('f'),
       stamina_limit_(0),

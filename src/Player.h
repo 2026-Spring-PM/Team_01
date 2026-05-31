@@ -50,13 +50,30 @@ public:
     char get_facing() const { return facing_; } // f/front, b/back, l/left, r/right
     void set_tool_grade(int grade);
     int get_harvest_stamina_cost() const;
+    int get_hoe_grade() const { return hoe_grade_; }
+    void set_hoe_grade(int grade) { hoe_grade_ = grade; }
 
+    int get_fishing_rod_grade() const { return fishing_rod_grade_; }
+    void set_fishing_rod_grade(int grade) { fishing_rod_grade_ = grade; }
+
+    int get_pickaxe_grade() const { return pickaxe_grade_; }
+    void set_pickaxe_grade(int grade) { pickaxe_grade_ = grade; }
+
+    // 추후 요리/장비 등으로 올라갈 스탯 (현재는 기본 0)
+    int get_luk() const { return luk_; }
+    int get_str() const { return str_; }
     void apply_cold_penalty();
     void recover_daily_status();
     bool is_sick_today() const { return sick_today_; }
     const std::string& get_levelup_message() const { return levelup_message_; }
     void clear_levelup_message() { levelup_message_.clear(); }
 private:
+    int hoe_grade_ = 0;
+    int fishing_rod_grade_ = 0;
+    int pickaxe_grade_ = 0;
+    
+    int luk_ = 0;
+    int str_ = 0;
     int x_;
     int y_;
     int money_;
