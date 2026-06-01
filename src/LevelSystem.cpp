@@ -9,11 +9,18 @@ bool LevelSystem::add_exp(int exp) {
     exp_ += exp;
     bool leveled_up = false;
 
-    while (level_ < MAX_LEVEL && exp_ >= required_exp_for_level(level_ + 1)) {
-        ++level_;
-        on_level_up();
-        leveled_up = true;
+    while (level_ < MAX_LEVEL) {
+        int needed = required_exp_for_level(level_ + 1);
+        if (exp_ >= needed) {
+            exp_ -= needed;   // ← 차감!
+            ++level_;
+            on_level_up();
+            leveled_up = true;
+        } else {
+            break;
+        }
     }
+
     return leveled_up;
 }
 

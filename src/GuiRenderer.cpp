@@ -166,9 +166,9 @@ std::string GuiRenderer::item_texture_key(ItemType item) const {
         case ItemType::FISH_MACKEREL: return "fish_mackerel";
         case ItemType::FISH_FLATFISH: return "fish_flatfish";
         case ItemType::FISH_TUNA: return "fish_tuna";
-        case ItemType::BREAD: return "food_bread";
-        case ItemType::GRILLED_FISH: return "food_grilled_fish";
-        case ItemType::APPLE_PIE: return "food_apple_pie";
+        //case ItemType::BREAD: return "food_bread";
+        //case ItemType::GRILLED_FISH: return "food_grilled_fish";
+        //case ItemType::APPLE_PIE: return "food_apple_pie";
     }
     return "bag";
 }

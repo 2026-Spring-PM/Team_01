@@ -1,0 +1,12 @@
+# 빌드 결과물
+build/
+*.o
+*.exe
+
+# IDE
+.vscode/
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db

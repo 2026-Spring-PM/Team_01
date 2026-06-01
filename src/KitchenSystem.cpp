@@ -413,3 +413,17 @@ std::string KitchenSystem::get_recipe_name(std::vector<ItemType> inputs) {
     }
     return "";
 }
+// GUI에서 호출하는 통합 액션 핸들러
+void KitchenSystem::perform_action(Player& player, int sel, std::string& message) {
+    // sel: 1~N = 레시피 번호, 마지막 = 업그레이드
+    // 기존 show_menu의 로직을 간략화한 버전
+    if (sel == 0) {
+        // 업그레이드
+        upgrade(player, message);
+    } else {
+        // 레시피 선택해서 조리
+        // 임시 구현 - 실제론 sel 번호에 맞는 레시피 가져와야 함
+        std::vector<ItemType> inputs;  // 빈 배열
+        cook(player, inputs, message);
+    }
+}
