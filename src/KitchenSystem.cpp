@@ -382,15 +382,15 @@ bool KitchenSystem::cook(Player& player, std::vector<ItemType> inputs, std::stri
     if (rarity <= 5) {
         monster_type = ItemType::MONSTER_FOOD_LOW;
         monster_name = "하급 괴식 (수상한 모방품 요리)";
-        monster_sell = 500;
+        monster_sell = 200;
     } else if (rarity <= 10) {
         monster_type = ItemType::MONSTER_FOOD_MID;
         monster_name = "중급 괴식 (그럴싸한 위조 만찬)";
-        monster_sell = 1500;
+        monster_sell = 500;
     } else {
         monster_type = ItemType::MONSTER_FOOD_HIGH;
         monster_name = "고급 괴식 (국왕도 속아넘어갈 환상의 미식)";
-        monster_sell = 3000;
+        monster_sell = 2000;
     }
 
     for (auto ing : inputs) player.remove_item(ing, 1);

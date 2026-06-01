@@ -193,10 +193,10 @@ void MarketSystem::show_sell_shop(Player& player) {
                 if (ans != 'y' && ans != 'Y') { std::cout << "\n취소했습니다.\n"; wait_key(); break; }
 
                 player.remove_item(MONSTER_FOODS[m], 1);
+                player.set_sold_monster_food(true);
                 int roll = std::rand() % 100;
                 if (roll < 20) {
                     player.add_money(MONSTER_SELL_PRICE[m]);
-                    player.set_sold_monster_food(true);
                     std::cout << "\n✅ 판매 성공! +" << MONSTER_SELL_PRICE[m] << "G 획득!\n";
                 } else {
                     std::cout << "\n❌ 판매 실패... 상점 주인이 의심스러운 눈초리로 바라봅니다. 괴식이 소멸되었습니다.\n";
