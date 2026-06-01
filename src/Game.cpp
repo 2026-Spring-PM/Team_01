@@ -123,7 +123,7 @@ void Game::handle_action() {
             return;
         }
 #endif
-        system("clear");
+        
         MiniGames::play_lotto_mining(player_);
         renderer_.add_message("광산 탐험을 마쳤습니다.");
         return;
@@ -140,7 +140,7 @@ void Game::handle_action() {
                 break;
             }
 #endif
-            system("clear");
+            
             MiniGames::play_fishing(player_);
             renderer_.add_message("낚시를 마쳤습니다.");
             break;
@@ -159,7 +159,7 @@ void Game::handle_action() {
             }
 #endif
             {
-                system("clear");
+                
                 std::cout << "🛏️ 침대입니다. 잠을 주무시겠습니까? (Y/N): " << std::flush;
                 char conf = getch();
                 if (conf == 'y' || conf == 'Y') advance_day();
@@ -170,7 +170,7 @@ void Game::handle_action() {
 #ifdef FARM_GUI
             if (gui_mode_) { handle_gui_market(); break; }
 #endif
-            system("clear");
+            
             std::cout << "🏪 피에르 상점입니다.\n1. 구매\n2. 판매\n0. 나가기\n>> " << std::flush;
             {
                 char sel = getch();
@@ -196,7 +196,7 @@ void Game::handle_action() {
         case TileType::PATH:
             // 🌲 나무 벌목 로직
             if (tile.building_name == "나무") {
-                system("clear");
+                
                 std::cout << "🌲 야생의 나무입니다. 도끼질을 하여 베시겠습니까? (스태미나 1 소모) (Y/N): " << std::flush;
                 char conf = getch();
                 if (conf == 'y' || conf == 'Y') {
@@ -225,7 +225,7 @@ void Game::handle_farm(Tile& tile) {
 #ifdef FARM_GUI
     if (gui_mode_) { handle_gui_farm(tile); return; }
 #endif
-    system("clear");
+    
 
     if (!tile.has_crop()) {
         std::cout << "🌱 [농경지] 심을 씨앗을 고르세요.\n";
@@ -272,7 +272,7 @@ void Game::handle_livestock(Tile& tile) {
 #ifdef FARM_GUI
     if (gui_mode_) { handle_gui_livestock(tile); return; }
 #endif
-    system("clear");
+    
 
     if (!tile.has_animal()) {
         std::cout << "🐾 [사육장] 작업을 선택하세요.\n";
@@ -316,7 +316,7 @@ void Game::handle_building(Tile& tile) {
 #ifdef FARM_GUI
     if (gui_mode_) { handle_gui_building(tile); return; }
 #endif
-    system("clear");
+    
 
     if (!tile.building_name.empty()) {
         if (tile.building_name == "주방") kitchen_.interact(player_);
@@ -383,7 +383,7 @@ void Game::quit() {
         return;
     }
 #endif
-    system("clear");
+    
     std::cout << "정말 게임을 종료하시겠습니까? 저장 기능은 아직 없습니다. (Y/N): " << std::flush;
     char ans = getch();
     if (ans == 'y' || ans == 'Y') {
@@ -840,7 +840,7 @@ void Game::show_gui_inventory() {
 
 void Game::show_skill_tree() {
     while (true) {
-        system("clear");
+        
         std::cout << "🌟 [스킬 트리]\n";
         std::cout << "보유 스킬 포인트: " << player_.get_skill_points() << "\n\n";
         std::cout << "어떤 스킬 트리를 확인하시겠습니까?\n";
@@ -860,7 +860,7 @@ void Game::show_skill_tree() {
 
 void Game::show_str_tree() {
     while (true) {
-        system("clear");
+        
         std::cout << "💪 [STR 스킬 트리] (보유 포인트: " << player_.get_skill_points() << ")\n\n";
         
         // 람다 함수로 배운 스킬은 [O], 안 배운 건 [ ] 표시
@@ -907,7 +907,7 @@ void Game::show_str_tree() {
 
 void Game::show_int_tree() {
     while (true) {
-        system("clear");
+        
         std::cout << "🧠 [INT 스킬 트리] (보유 포인트: " << player_.get_skill_points() << ")\n\n";
         auto st = [&](int id) { return player_.has_int_node(id) ? "[O]" : "[ ]"; };
 
@@ -980,7 +980,7 @@ void Game::show_int_tree() {
 
 void Game::show_luk_tree() {
     while (true) {
-        system("clear");
+        
         std::cout << "🍀 [LUK 스킬 트리] (보유 포인트: " << player_.get_skill_points() << ")\n\n";
         auto st = [&](int id) { return player_.has_luk_node(id) ? "[O]" : "[ ]"; };
 

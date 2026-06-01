@@ -21,10 +21,7 @@ void Renderer::add_message(const std::string& msg) {
 }
 
 void Renderer::clear_screen() {
-    for (int i = 0; i < 50; ++i) std::cout << "\n";
-    int r = system("clear");
-    (void)r;
-    std::cout << "\033[2J\033[3J\033[H" << std::flush;
+    std::cout << "\033[2J\033[H" << std::flush;
 }
 
 void Renderer::draw_status_bar(const Player& player) {
