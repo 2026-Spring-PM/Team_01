@@ -42,9 +42,9 @@ MarketSystem::MarketSystem() {
         {ItemType::FOOD_TUNA_POTATO,          "국왕의 참치 감자 스테이크", 0, 1050, 1},
         {ItemType::FOOD_HAILIGHT_RICE,        "대농장 특선 하이라이스", 0, 760, 1},
         {ItemType::FOOD_APPLE_POTATO_CAKE,    "특선 사과 감자 무스 케이크", 0, 460, 1},
-        {ItemType::MONSTER_FOOD_LOW,   "하급 괴식 (수상한 모방품)", 0, 500, 1},
-        {ItemType::MONSTER_FOOD_MID,   "중급 괴식 (그럴싸한 위조 만찬)", 0, 1500, 1},
-        {ItemType::MONSTER_FOOD_HIGH,  "고급 괴식 (환상의 미식)", 0, 3000, 1},
+        {ItemType::MONSTER_FOOD_LOW,   "하급 괴식 (수상한 모방품)", 0, 200, 1},
+        {ItemType::MONSTER_FOOD_MID,   "중급 괴식 (그럴싸한 위조 만찬)", 0, 500, 1},
+        {ItemType::MONSTER_FOOD_HIGH,  "고급 괴식 (환상의 미식)", 0, 2000, 1},
         // 레거시
         {ItemType::COPPER,        "구리 광석", 0, 15, 1},
         {ItemType::IRON,          "철 광석", 0, 30, 1},

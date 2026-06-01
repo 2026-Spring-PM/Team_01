@@ -6,7 +6,7 @@
 #include <map>
 
 // ── 상수 ────────────────────────────────────────────────────
-static const int KITCHEN_UPGRADE_COST[]  = {200, 600, 2000}; // Lv0->1, Lv1->2, Lv2->3 (index = current level)
+static const int KITCHEN_UPGRADE_COST[]  = {100, 300, 500, 1000}; // Lv0->1, Lv1->2, Lv2->3, Lv3->4 (index = current level)
 static const int KITCHEN_UPGRADE_LEVEL[] = {6,   10,  16,  20}; // 각 레벨 개방 플레이어 Lv (index = 목표 레벨-1)
 
 // ── 레시피 테이블 ────────────────────────────────────────────
