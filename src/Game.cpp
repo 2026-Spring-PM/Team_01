@@ -296,7 +296,13 @@ void Game::handle_livestock(Tile& tile) {
     std::cout << "🐄 [가축 관리]\n1. 생산물 수집\n2. 가축 제거\n0. 취소\n>> " << std::flush;
     char sel = getch();
     std::string message;
-    if (sel == '1') LivestockSystem::collect_product(player_, tile, message);
+    if (sel == '1') {
+        if (player_.is_wildlife_today() && !player_.has_str_node(2)) {
+            message = "🐺 야생동물 출몰! 가축이 극심한 스트레스를 받아 오늘은 생산물을 수확할 수 없습니다.";
+        } else {
+            LivestockSystem::collect_product(player_, tile, message);
+        }
+    }
     else if (sel == '2') {
         std::cout << "\n정말 제거하시겠습니까? (Y/N): " << std::flush;
         char conf = getch();
@@ -334,17 +340,21 @@ void Game::handle_building(Tile& tile) {
 }
 
 void Game::advance_day() {
-    player_.sleep_anywhere();
+    player_.sleep_anywhere();   // day++, recover_daily_status (tick 없음)
     market_.start_new_day();
 
     std::string event_message;
     event_system_.process_new_day(player_, map_, event_message);
 
-    // 별 내리는 밤: 작물 성장 1회 추가 (이미 advance_day 내에서 map_.advance_day가 1회 호출되므로 +1)
+    // 별 내리는 밤: process_new_day 이후 is_starry_night 체크
+    // → 오늘 새로 발동된 경우도 포함, map.advance_day 1번 추가
     if (player_.is_starry_night()) {
-        map_.advance_day(); // 성장 추가 1일
+        map_.advance_day();
     }
     map_.advance_day();
+
+    // process_new_day 이후 tick: 남은 일수 차감
+    player_.tick_starry_night();
 
     std::string message = "침대에서 잠을 잤습니다. 하루가 지나 작물과 가축이 성장했습니다. 🌅";
     if (!event_message.empty()) message += " " + event_message;
@@ -856,12 +866,26 @@ void Game::show_str_tree() {
         // 람다 함수로 배운 스킬은 [O], 안 배운 건 [ ] 표시
         auto st = [&](int id) { return player_.has_str_node(id) ? "[O]" : "[ ]"; };
 
-        std::cout << "1단계: " << st(1) << " 1. 거대 위장\n";
-        std::cout << "2단계: ├── " << st(2) << " 2. 압도적인 기백\n";
-        std::cout << "       └── " << st(3) << " 3. 채광왕\n";
-        std::cout << "3단계: " << st(4) << " 4. 강철 폐활량\n";
-        std::cout << "4단계: ├── " << st(5) << " 5. 대지의 아들\n";
-        std::cout << "       └── " << st(6) << " 6. 헤라클레스\n\n";
+        // ── 기존 스킬 출력 부분을 아래 코드로 교체 ──
+        std::cout << "1단계:\n";
+        std::cout << "  " << st(1) << " 1. 거대 위장\n";
+        std::cout << "     └─ 🫐 최대 스태미나 통 +5 영구 확장\n\n";
+
+        std::cout << "2단계:\n";
+        std::cout << "  ├── " << st(2) << " 2. 압도적인 기백\n";
+        std::cout << "  │    └─ 🍃 감기 이벤트 스태미나 감소 완화 (-50% → -20%), 야생동물 출몰 무효화\n";
+        std::cout << "  └── " << st(3) << " 3. 채광왕\n";
+        std::cout << "       └─ ⛏️ 광산 붕괴 압력 초과 시 30% 확률로 완력 버팀 (즉시 탈출 시 보상 보존)\n\n";
+
+        std::cout << "3단계:\n";
+        std::cout << "  " << st(4) << " 4. 강철 폐활량\n";
+        std::cout << "     └─ 🫁 최대 스태미나 통 +10 추가 영구 확장\n\n";
+
+        std::cout << "4단계:\n";
+        std::cout << "  ├── " << st(5) << " 5. 대지의 아들\n";
+        std::cout << "  │    └─ 🌾 수확 시 20% 확률로 스태미나 소모 0 (면제)\n";
+        std::cout << "  └── " << st(6) << " 6. 헤라클레스\n";
+        std::cout << "       └─ 🔥 광산 압력 초과 시 100% 확률로 버팀, 누적 압력 수치 공개, 탈출 시 광물 보상 2배\n\n";
 
         std::cout << "투자할 스킬 번호를 입력하세요 (0: 뒤로 가기) >> " << std::flush;
         char sel = getch();
@@ -887,17 +911,46 @@ void Game::show_int_tree() {
         std::cout << "🧠 [INT 스킬 트리] (보유 포인트: " << player_.get_skill_points() << ")\n\n";
         auto st = [&](int id) { return player_.has_int_node(id) ? "[O]" : "[ ]"; };
 
-        std::cout << "<정상 루트>\n";
+        // ── 1. 정상 루트 출력 ──
+        std::cout << "💡 <정상 루트>\n";
         std::cout << "1단계: " << st(1) << " 1. 공정 최적화\n";
+        std::cout << "     └─ ⚙️ 주방, 대장간 업그레이드 비용 및 농기구 제작 비용(G) 20% 감소\n\n";
+        
         std::cout << "2단계: " << st(2) << " 2. 재무 설계\n";
+        std::cout << "     └─ 📈 하루를 시작할 때 소지 골드의 1%를 이자로 획득 (최대 100G)\n\n";
+        
         std::cout << "3단계: " << st(3) << " 3. 단골 손님\n";
-        std::cout << "4단계: " << st(4) << " 4. 농업 협동조합장\n\n";
+        std::cout << "     └─ 🛒 상점 물품 구매 가격 -10%\n\n";
+        
+        std::cout << "4단계: " << st(4) << " 4. 농업 협동조합장\n";
+        std::cout << "     └─ 🌾 상점에 판매한 모든 품목 총수익의 10%를 다음 날 아침 추가 배당금으로 획득\n\n";
 
-        std::cout << "<히든 루트 (괴식)>\n";
-        std::cout << "1단계: " << st(5) << " 5. 야바위꾼\n";
-        std::cout << "2단계: " << st(6) << " 6. 위조 전문가\n";
-        std::cout << "3단계: " << st(7) << " 7. 능수능란한 언변\n";
-        std::cout << "4단계: " << st(8) << " 8. 괴도 루팡\n\n";
+        // ── 2. 히든 루트 출력 및 보안 마스킹 사양 처리 ──
+        std::cout << "🔮 <히든 빌드> ";
+        
+        // 플레이어가 괴식을 한 번이라도 판매했는지 체크
+        bool is_hidden_unlocked = player_.has_sold_monster_food(); 
+
+        if (!is_hidden_unlocked) {
+            // [최초 판매 전] 철저하게 은폐 처리
+            std::cout << "🔒 (특정 조건 만족 후 잠금 해제)\n";
+            std::cout << "  ※ 아직 알 수 없는 기묘한 기운이 잠재되어 있습니다...\n\n";
+        } else {
+            // [최초 판매 후] 전체 스킬명과 이모지 요약 설명 오픈
+            std::cout << "🔓 (잠금 해제 완료)\n";
+            std::cout << "1단계: " << st(5) << " 5. 야바위꾼\n";
+            std::cout << "     └─ 🃏 괴식 판매 시 기본 단가 +10% 추가 보너스 획득\n\n";
+            
+            // 데이터 연동 흐름 가시성 확보를 위해 2~4단계 연달아 노출
+            std::cout << "2단계: " << st(6) << " 6. 위조 전문가\n";
+            std::cout << "     └─ 📜 괴식 사기 판매 성공률 +20%\n\n";
+            
+            std::cout << "3단계: " << st(7) << " 7. 능수능란한 언변\n";
+            std::cout << "     └─ 💬 괴식 사기 판매 실패 시 50% 확률로 신뢰도 하락 무효\n\n";
+            
+            std::cout << "4단계: " << st(8) << " 8. 괴도 루팡\n";
+            std::cout << "     └─ 🎩 괴식 사기 판매 성공률 +20% 추가 증가\n\n";
+        }
 
         std::cout << "투자할 스킬 번호를 입력하세요 (1~8, 0: 뒤로 가기) >> " << std::flush;
         char sel = getch();
@@ -905,6 +958,14 @@ void Game::show_int_tree() {
 
         int node = sel - '0';
         if (node >= 1 && node <= 8) {
+            // 아직 잠겨있는데 히든 루트(5~8번)를 치트나 실수로 누른 경우 방어문 추가
+            if (node >= 5 && node <= 8 && !is_hidden_unlocked) {
+                std::cout << "\n❌ 아직 해금되지 않은 비밀 스킬입니다!\n";
+                std::cout << "(아무 키나 누르면 돌아갑니다)";
+                getch();
+                continue;
+            }
+
             std::string msg;
             if (player_.invest_int_node(node, msg)) {
                 std::cout << "\n✨ " << msg << "\n";
@@ -923,12 +984,26 @@ void Game::show_luk_tree() {
         std::cout << "🍀 [LUK 스킬 트리] (보유 포인트: " << player_.get_skill_points() << ")\n\n";
         auto st = [&](int id) { return player_.has_luk_node(id) ? "[O]" : "[ ]"; };
 
-        std::cout << "1단계: " << st(1) << " 1. 씨앗 환급\n";
-        std::cout << "2단계: ├── " << st(2) << " 2. 쌍둥이 가축\n";
-        std::cout << "       └── " << st(3) << " 3. 강태공의 가호\n";
-        std::cout << "3단계: " << st(4) << " 4. 알뜰한 손재주\n";
-        std::cout << "4단계: ├── " << st(5) << " 5. 우주적 기연\n";
-        std::cout << "       └── " << st(6) << " 6. 황금 어장의 지배자\n\n";
+        // ── 행운 스킬 트리 출력 ──
+        std::cout << "1단계:\n";
+        std::cout << "  " << st(1) << " 1. 씨앗 환급\n";
+        std::cout << "     └─ 🌱 농사 작물 수확 시 10% 확률로 심었던 씨앗 1개 회수\n\n";
+
+        std::cout << "2단계:\n";
+        std::cout << "  ├── " << st(2) << " 2. 쌍둥이 가축\n";
+        std::cout << "  │    └─ 🐣 가축 생산물 수확 시 20% 확률로 생산물 +1\n";
+        std::cout << "  └── " << st(3) << " 3. 강태공의 가호\n";
+        std::cout << "       └─ 🎣 고등어, 광어, 참치 주사위에서 각 생선이 지급될 확률 +10%\n\n";
+
+        std::cout << "3단계:\n";
+        std::cout << "  " << st(4) << " 4. 알뜰한 손재주\n";
+        std::cout << "     └─ 🍳 주방 요리 시 요구 재료 중 무작위 1개 소모 면제\n\n";
+
+        std::cout << "4단계:\n";
+        std::cout << "  ├── " << st(5) << " 5. 우주적 기연\n";
+        std::cout << "  │    └─ ✨ '별 내리는 밤' 이벤트 발생 확률 증가 (1% → 10%)\n";
+        std::cout << "  └── " << st(6) << " 6. 황금 어장의 지배자\n";
+        std::cout << "       └─ 👑 생선 주사위 확률 +10% 추가 증가 & 낚시 성공 시 10% 확률로 생선 3종 세트 추가 획득\n\n";
 
         std::cout << "투자할 스킬 번호를 입력하세요 (1~6, 0: 뒤로 가기) >> " << std::flush;
         char sel = getch();

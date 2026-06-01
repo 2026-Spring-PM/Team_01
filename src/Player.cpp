@@ -19,6 +19,7 @@ Player::Player()
       wildlife_today_(false),
       starry_night_days_(0),
       skill_points_(0),
+      sold_monster_food_(false),
       level_system_(),
       inventory_(INITIAL_INVENTORY_SLOTS),
       name_("초보 농부") {}
@@ -262,6 +263,6 @@ void Player::recover_daily_status() {
     sick_today_ = false;
     stamina_limit_ = 0;
     wildlife_today_ = false;
-    tick_starry_night();
+    // tick_starry_night은 advance_day에서 process_new_day 이후에 호출
     stamina_ = get_true_stamina_max();
 }

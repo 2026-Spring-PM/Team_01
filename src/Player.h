@@ -89,6 +89,10 @@ public:
     bool is_wildlife_today() const { return wildlife_today_; }
     void set_wildlife_today(bool v) { wildlife_today_ = v; }
 
+    // 괴식 판매
+    bool has_sold_monster_food() const { return sold_monster_food_; }
+    void set_sold_monster_food(bool sold) { sold_monster_food_ = sold; }
+
 private:
     int x_;
     int y_;
@@ -111,6 +115,8 @@ private:
     bool str_nodes_[7] = { false, false, false, false, false, false, false };
     bool int_nodes_[9] = { false, false, false, false, false, false, false, false, false };
     bool luk_nodes_[7] = { false, false, false, false, false, false, false };
+
+    bool sold_monster_food_ = false;
 
     LevelSystem level_system_;
     Inventory<ItemType> inventory_;
