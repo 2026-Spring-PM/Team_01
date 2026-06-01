@@ -21,7 +21,10 @@ void Renderer::add_message(const std::string& msg) {
 }
 
 void Renderer::clear_screen() {
-    std::cout << "\033[2J\033[H";
+    for (int i = 0; i < 50; ++i) std::cout << "\n";
+    int r = system("clear");
+    (void)r;
+    std::cout << "\033[2J\033[3J\033[H" << std::flush;
 }
 
 void Renderer::draw_status_bar(const Player& player) {
@@ -40,7 +43,7 @@ void Renderer::draw_status_bar(const Player& player) {
 
     std::cout << "💰 " << player.get_money() << "G   ⚡ " << player.get_stamina() << "/" << player.get_stamina_max()
               << "   🎒 " << player.inventory().used_slots() << "/" << player.inventory().max_slots()
-              << "   🛠️ 🌱" << player.get_hoe_grade() << " 🎣" << player.get_rod_grade() << " ⛏️" << player.get_pick_grade();
+              << "   🛠️🌱 " << player.get_hoe_grade() << " 🎣 " << player.get_rod_grade() << " ⛏️  " << player.get_pick_grade();
     if (player.is_sick_today()) std::cout << "   🤧 감기";
     std::cout << "\n";
     std::cout << "═══════════════════════════════════════════════\n";
@@ -50,7 +53,7 @@ void Renderer::draw_map(const Player& player, const Map& map) {
     for (int y = 0; y < Map::HEIGHT; ++y) {
         for (int x = 0; x < Map::WIDTH; ++x) {
             if (x == player.get_x() && y == player.get_y()) {
-                std::cout << "🧑‍🌾";
+                std::cout << "🧑";
                 continue;
             }
 

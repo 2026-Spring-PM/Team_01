@@ -50,6 +50,7 @@ public:
     int get_hoe_grade() const { return hoe_grade_; }
     int get_rod_grade() const { return rod_grade_; }
     int get_pick_grade() const { return pick_grade_; }
+    int get_tool_grade() const { return hoe_grade_; }
     
     void set_hoe_grade(int grade) { hoe_grade_ = (grade<0)?0:(grade>3)?3:grade; }
     void set_rod_grade(int grade) { rod_grade_ = (grade<0)?0:(grade>3)?3:grade; }

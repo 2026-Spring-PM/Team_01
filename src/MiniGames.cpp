@@ -456,16 +456,16 @@ void play_lotto_mining(Player& player) {
         } else if (turns <= 2) {
             int qty = (turns <= 1) ? 1 : 2;
             player.add_item(ItemType::COPPER, qty * mul);
-            player.add_exp(2 * turns);
+            player.add_exp(2*turns);
             std::cout << "구리 광석 " << qty * mul << "개 획득! XP +" << (2 * turns) << "\n";
         } else if (turns <= 4) {
             int qty = (turns == 3) ? 1 : 2;
             player.add_item(ItemType::IRON, qty * mul);
-            player.add_exp(2 * turns);
+            player.add_exp(2*turns);
             std::cout << "철 광석 " << qty * mul << "개 획득! XP +" << (2 * turns) << "\n";
         } else {
             player.add_item(ItemType::GOLD, 1 * mul);
-            player.add_exp(10);
+            player.add_exp(5);
             std::cout << "금 광석 " << (1 * mul) << "개 획득! XP +10\n";
             if (hercules_double) std::cout << "⚡ 헤라클레스 보상 2배!\n";
         }

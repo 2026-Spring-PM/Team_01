@@ -1,3 +1,0 @@
-/mnt/c/Users/0hllw/Team_01_fixed/build/CMakeFiles/main.dir
-/mnt/c/Users/0hllw/Team_01_fixed/build/CMakeFiles/edit_cache.dir
-/mnt/c/Users/0hllw/Team_01_fixed/build/CMakeFiles/rebuild_cache.dir
