@@ -10,11 +10,12 @@ Spring 2026 Programming Methodology Team Project
 ### GUI version
 - `SDL2`
 - `SDL2_image`
+- `SDL2_ttf`
 - On Ubuntu/WSL:
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake pkg-config libsdl2-dev libsdl2-image-dev
+sudo apt install -y build-essential cmake pkg-config libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev fonts-noto-cjk
 ```
 
 ## Local Build & Run
@@ -59,12 +60,12 @@ Windows users need an X server such as VcXsrv or Xming before running Docker GUI
 ## Project Structure
 
 - `src/` — C++ source code
-- `assets/sprites/` — PNG GUI sprites
+- `assets/` — PNG GUI sprites
 - `scripts/` — build/run scripts
 - `docs/` — reports and design docs
 
 ## GUI Notes
 
-The SDL2 GUI now covers the main map, player movement, HUD, event icons, shop, farming choices, livestock choices, building construction, kitchen, workshop, fishing minigame, lotto mining minigame, inventory, and quit confirmation.
+The SDL2 GUI now covers the main map, player movement, HUD, event icons, shop, farming choices, livestock choices, building construction, kitchen, workshop, fishing minigame, blackjack-style mining minigame, inventory, and quit confirmation.
 
 Detailed menus use SDL popup buttons through `SDL_ShowMessageBox`, so they no longer require typing into the terminal while GUI mode is active.
