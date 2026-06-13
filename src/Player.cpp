@@ -1,7 +1,13 @@
 #include "Player.h"
-#include "LevelSystem.h"
 
 #include <algorithm>
+#include <cstdlib>
+
+namespace {
+int clamp_grade(int grade) {
+    return std::max(0, std::min(3, grade));
+}
+}
 
 Player::Player()
     : x_(Map::BED_X),
@@ -19,10 +25,21 @@ Player::Player()
       wildlife_today_(false),
       starry_night_days_(0),
       skill_points_(0),
+      str_nodes_{false, false, false, false, false, false, false},
+      int_nodes_{false, false, false, false, false, false, false, false, false},
+      luk_nodes_{false, false, false, false, false, false, false},
       sold_monster_food_(false),
+      shop_trust_(100),
+      daily_sales_income_(0),
+      pending_dividend_(0),
       level_system_(),
       inventory_(INITIAL_INVENTORY_SLOTS),
       name_("초보 농부") {}
+
+void Player::set_position(int x, int y) {
+    x_ = std::max(0, std::min(Map::WIDTH - 1, x));
+    y_ = std::max(0, std::min(Map::HEIGHT - 1, y));
+}
 
 bool Player::try_move(int dx, int dy, const Map& map) {
     if (dy < 0) facing_ = 'b';
@@ -74,19 +91,18 @@ void Player::restore_stamina(int amount) {
 bool Player::add_exp(int exp) {
     int old_level = get_level();
     bool leveled = level_system_.add_exp(exp);
-    if (leveled) {
-        stamina_ = get_stamina_max();
-        int new_level = get_level();
-        levelup_message_ = "레벨업! Lv." + std::to_string(new_level) + " 달성! 스태미나 MAX 회복!";
-        // 스킬 포인트 지급: 보너스 레벨(6,10,16,20,26,30)에서 지급
-        for (int lv = old_level + 1; lv <= new_level; ++lv) {
-            if (LevelSystem::is_bonus_level(lv)) {
-                ++skill_points_;
-                levelup_message_ += " 🎯 스킬 포인트 +1!";
-            }
+    if (!leveled) return false;
+
+    stamina_ = get_stamina_max();
+    int new_level = get_level();
+    levelup_message_ = "레벨업! Lv." + std::to_string(new_level) + " 달성! 스태미나가 회복되었습니다.";
+    for (int lv = old_level + 1; lv <= new_level; ++lv) {
+        if (LevelSystem::is_bonus_level(lv)) {
+            ++skill_points_;
+            levelup_message_ += " 스킬 포인트 +1";
         }
     }
-    return leveled;
+    return true;
 }
 
 void Player::expand_inventory_slots(int additional) {
@@ -106,156 +122,106 @@ int Player::count_item(ItemType type) const {
 }
 
 void Player::set_storage_level(int level) {
-    if (level < 0) level = 0;
-    if (level > 3) level = 3;
-    storage_level_ = level;
+    storage_level_ = std::max(0, std::min(3, level));
+}
+
+void Player::set_hoe_grade(int grade) {
+    hoe_grade_ = clamp_grade(grade);
+}
+
+void Player::set_rod_grade(int grade) {
+    rod_grade_ = clamp_grade(grade);
+}
+
+void Player::set_pick_grade(int grade) {
+    pick_grade_ = clamp_grade(grade);
 }
 
 int Player::get_true_stamina_max() const {
     int base = level_system_.get_max_stamina();
-    // STR 노드 1(거대 위장): +5
-    if (str_nodes_[1]) base += 5;
-    // STR 노드 4(강철 폐활량): +10
-    if (str_nodes_[4]) base += 10;
+    if (has_str_node(1)) base += 5;
+    if (has_str_node(4)) base += 10;
     return base;
 }
 
-
 int Player::get_harvest_stamina_cost() const {
-    return 1;
+    switch (hoe_grade_) {
+        case 1: return 4;
+        case 2: return 3;
+        case 3: return 2;
+        default: return 5;
+    }
 }
 
 int Player::get_fishing_stamina_cost() const {
-    // 금제 낚싯대는 -2 감소 (5->3)
-    if (rod_grade_ >= 3) return 3;
-    return 5;
+    return rod_grade_ >= 3 ? 3 : 5;
 }
 
 int Player::get_mining_stamina_cost() const {
-    // 금제 곡괭이는 -2 감소 (5->3)
-    if (pick_grade_ >= 3) return 3;
-    return 5;
+    return pick_grade_ >= 3 ? 3 : 5;
 }
 
-bool Player::has_str_node(int node_id) const { return (node_id >= 1 && node_id <= 6) ? str_nodes_[node_id] : false; }
-bool Player::has_int_node(int node_id) const { return (node_id >= 1 && node_id <= 8) ? int_nodes_[node_id] : false; }
-bool Player::has_luk_node(int node_id) const { return (node_id >= 1 && node_id <= 6) ? luk_nodes_[node_id] : false; }
+bool Player::has_str_node(int node_id) const {
+    return node_id >= 1 && node_id <= 6 && str_nodes_[node_id];
+}
 
-// STR 스킬 투자 로직 (2단계, 4단계 분기형)
+bool Player::has_int_node(int node_id) const {
+    return node_id >= 1 && node_id <= 8 && int_nodes_[node_id];
+}
+
+bool Player::has_luk_node(int node_id) const {
+    return node_id >= 1 && node_id <= 6 && luk_nodes_[node_id];
+}
+
 bool Player::invest_str_node(int node_id, std::string& message) {
     if (skill_points_ <= 0) { message = "스킬 포인트가 부족합니다."; return false; }
-    if (node_id < 1 || node_id > 6) { message = "잘못된 스킬 번호입니다."; return false; }
-    if (str_nodes_[node_id]) { message = "이미 배운 스킬입니다."; return false; }
-
-    // 선행 스킬 조건 검사
-    if (node_id == 2 || node_id == 3) { // 2단계
-        if (!str_nodes_[1]) { message = "선행 스킬(1단계)이 필요합니다."; return false; }
-    } else if (node_id == 4) { // 3단계
-        if (!str_nodes_[2] && !str_nodes_[3]) { message = "선행 스킬(2단계 중 하나 이상)이 필요합니다."; return false; }
-    } else if (node_id == 5 || node_id == 6) { // 4단계
-        if (!str_nodes_[4]) { message = "선행 스킬(3단계)이 필요합니다."; return false; }
-    }
+    if (node_id < 1 || node_id > 6) { message = "없는 STR 스킬입니다."; return false; }
+    if (str_nodes_[node_id]) { message = "이미 배운 STR 스킬입니다."; return false; }
+    if ((node_id == 2 || node_id == 3) && !str_nodes_[1]) { message = "STR 1번 스킬이 필요합니다."; return false; }
+    if (node_id == 4 && !str_nodes_[2] && !str_nodes_[3]) { message = "STR 2번 또는 3번 스킬이 필요합니다."; return false; }
+    if ((node_id == 5 || node_id == 6) && !str_nodes_[4]) { message = "STR 4번 스킬이 필요합니다."; return false; }
 
     --skill_points_;
     str_nodes_[node_id] = true;
-
-    // 투자 즉시 효과 적용 (최대 스태미나 증가 시 현재 스태미나도 재조정)
-    if (node_id == 1) message = "💪 [거대 위장] 해금! 최대 스태미나 +5";
-    else if (node_id == 2) message = "💪 [압도적인 기백] 해금! 감기 완화 & 야생동물 무효화";
-    else if (node_id == 3) message = "💪 [채광왕] 해금! 광산 30% 확률로 붕괴 버팀";
-    else if (node_id == 4) message = "💪 [강철 폐활량] 해금! 최대 스태미나 추가 +10";
-    else if (node_id == 5) message = "💪 [대지의 아들] 해금! 수확 시 20% 확률로 스태미나 소모 면제";
-    else if (node_id == 6) message = "💪 [헤라클레스] 해금! 광산 붕괴 무조건 버팀 & 보상 2배";
-    
+    static const char* names[] = {"", "건강한 몸", "감기 저항", "채굴 집중", "강인한 체력", "농사 숙련", "광산 숙련"};
+    message = std::string("STR 스킬 해금: ") + names[node_id];
     stamina_ = std::min(stamina_, get_stamina_max());
     return true;
 }
 
-// INT 스킬 투자 로직 (정상 루트 1~4 / 괴식 루트 5~8)
 bool Player::invest_int_node(int node_id, std::string& message) {
     if (skill_points_ <= 0) { message = "스킬 포인트가 부족합니다."; return false; }
-    if (node_id < 1 || node_id > 8) { message = "잘못된 스킬 번호입니다."; return false; }
-    if (int_nodes_[node_id]) { message = "이미 배운 스킬입니다."; return false; }
-
-    // 선행 스킬 조건 검사
-    if (node_id == 2) { 
-        if (!int_nodes_[1]) { message = "선행 스킬([공정 최적화])이 필요합니다."; return false; } 
-    }
-    else if (node_id == 3) { 
-        if (!int_nodes_[2]) { message = "선행 스킬([재무 설계])이 필요합니다."; return false; } 
-    }
-    else if (node_id == 4) { 
-        if (!int_nodes_[3]) { message = "선행 스킬([단골 손님])이 필요합니다."; return false; } 
-    }
-    // 괴식 루트 (히든 빌드)
-    else if (node_id == 6) { 
-        if (!int_nodes_[5]) { message = "선행 스킬([야바위꾼])이 필요합니다."; return false; } 
-    }
-    else if (node_id == 7) { 
-        if (!int_nodes_[6]) { message = "선행 스킬([위조 전문가])이 필요합니다."; return false; } 
-    }
-    else if (node_id == 8) { 
-        if (!int_nodes_[7]) { message = "선행 스킬([능수능란한 언변])이 필요합니다."; return false; } 
-    }
+    if (node_id < 1 || node_id > 8) { message = "없는 INT 스킬입니다."; return false; }
+    if (int_nodes_[node_id]) { message = "이미 배운 INT 스킬입니다."; return false; }
+    if (node_id >= 2 && node_id <= 4 && !int_nodes_[node_id - 1]) { message = "이전 INT 스킬이 필요합니다."; return false; }
+    if (node_id >= 6 && node_id <= 8 && !int_nodes_[node_id - 1]) { message = "이전 INT 스킬이 필요합니다."; return false; }
 
     --skill_points_;
     int_nodes_[node_id] = true;
-
-    // 투자 즉시 메시지 반환
-    switch(node_id) {
-        case 1: message = "💡 [공정 최적화] 해금! 주방/대장간 업그레이드 및 제작 비용 20% 감소"; break;
-        case 2: message = "💡 [재무 설계] 해금! 매일 아침 소지 골드의 1% 이자 획득 (최대 100G)"; break;
-        case 3: message = "💡 [단골 손님] 해금! 상점 물품 구매 가격 10% 할인"; break;
-        case 4: message = "💡 [농업 협동조합장] 해금! 오늘 판매 총수익의 10%를 내일 아침 배당금으로 획득"; break;
-        case 5: message = "💡 [야바위꾼] 해금! 괴식 판매 시 기본 단가 +10%"; break;
-        case 6: message = "💡 [위조 전문가] 해금! 괴식 사기 판매 성공률 +20%"; break;
-        case 7: message = "💡 [능수능란한 언변] 해금! 괴식 사기 판매 실패 시 50% 확률로 신뢰도 하락 무효"; break;
-        case 8: message = "💡 [괴도 루팡] 해금! 괴식 사기 판매 성공률 추가 +20%"; break;
-    }
+    static const char* names[] = {"", "공정 최적화", "재무 설계", "할인 감각", "협동 조합", "몬스터 조리", "제조 전문가", "손실 방지", "관리 루틴"};
+    message = std::string("INT 스킬 해금: ") + names[node_id];
     return true;
 }
 
-// LUK 스킬 투자 로직 (2단계, 4단계 분기형)
 bool Player::invest_luk_node(int node_id, std::string& message) {
     if (skill_points_ <= 0) { message = "스킬 포인트가 부족합니다."; return false; }
-    if (node_id < 1 || node_id > 6) { message = "잘못된 스킬 번호입니다."; return false; }
-    if (luk_nodes_[node_id]) { message = "이미 배운 스킬입니다."; return false; }
-
-    // 선행 스킬 조건 검사
-    if (node_id == 2 || node_id == 3) { // 2단계 (둘 중 하나, 혹은 둘 다 가능)
-        if (!luk_nodes_[1]) { message = "선행 스킬([씨앗 환급])이 필요합니다."; return false; } 
-    }
-    else if (node_id == 4) { // 3단계 (2단계 중 최소 하나 이상 필요)
-        if (!luk_nodes_[2] && !luk_nodes_[3]) { message = "선행 스킬(2단계 스킬 중 최소 1개)이 필요합니다."; return false; } 
-    }
-    else if (node_id == 5 || node_id == 6) { // 4단계 (둘 중 하나, 혹은 둘 다 가능)
-        if (!luk_nodes_[4]) { message = "선행 스킬([알뜰한 손재주])이 필요합니다."; return false; } 
-    }
+    if (node_id < 1 || node_id > 6) { message = "없는 LUK 스킬입니다."; return false; }
+    if (luk_nodes_[node_id]) { message = "이미 배운 LUK 스킬입니다."; return false; }
+    if ((node_id == 2 || node_id == 3) && !luk_nodes_[1]) { message = "LUK 1번 스킬이 필요합니다."; return false; }
+    if (node_id == 4 && !luk_nodes_[2] && !luk_nodes_[3]) { message = "LUK 2번 또는 3번 스킬이 필요합니다."; return false; }
+    if ((node_id == 5 || node_id == 6) && !luk_nodes_[4]) { message = "LUK 4번 스킬이 필요합니다."; return false; }
 
     --skill_points_;
     luk_nodes_[node_id] = true;
-
-    // 투자 즉시 메시지 반환
-    switch(node_id) {
-        case 1: message = "🍀 [씨앗 환급] 해금! 수확 시 10% 확률로 심었던 씨앗 회수"; break;
-        case 2: message = "🍀 [쌍둥이 가축] 해금! 가축 생산물 수확 시 20% 확률로 1개 더 획득"; break;
-        case 3: message = "🍀 [강태공의 가호] 해금! 각 생선 지급 확률 +10%"; break;
-        case 4: message = "🍀 [알뜰한 손재주] 해금! 요리 시 요구 재료 중 무작위 1개 소모 방어"; break;
-        case 5: message = "🍀 [우주적 기연] 해금! '별 내리는 밤' 발생 확률 10%로 대폭 상승"; break;
-        case 6: message = "🍀 [황금 어장의 지배자] 해금! 생선 지급 확률 추가 +10% 및 10% 확률로 거대한 그물 발동"; break;
-    }
+    static const char* names[] = {"", "씨앗 회수", "축산 행운", "낚시 감각", "요리 재능", "별자리 기운", "황금 어장"};
+    message = std::string("LUK 스킬 해금: ") + names[node_id];
     return true;
 }
 
 void Player::apply_cold_penalty() {
     sick_today_ = true;
     int true_max = get_true_stamina_max();
-    // STR 2단계: 감기 감소 -50% -> -20%
-    if (has_str_node(2)) {
-        stamina_limit_ = std::max(1, true_max * 80 / 100);
-    } else {
-        stamina_limit_ = std::max(1, true_max / 2);
-    }
+    stamina_limit_ = has_str_node(2) ? std::max(1, true_max * 80 / 100) : std::max(1, true_max / 2);
     if (stamina_ > stamina_limit_) stamina_ = stamina_limit_;
 }
 
@@ -263,6 +229,94 @@ void Player::recover_daily_status() {
     sick_today_ = false;
     stamina_limit_ = 0;
     wildlife_today_ = false;
-    // tick_starry_night은 advance_day에서 process_new_day 이후에 호출
     stamina_ = get_true_stamina_max();
+}
+
+void Player::lower_shop_trust(int amount) {
+    if (amount <= 0) return;
+    shop_trust_ = std::max(0, shop_trust_ - amount);
+}
+
+void Player::restore_shop_trust(int amount) {
+    if (amount <= 0) return;
+    shop_trust_ = std::min(100, shop_trust_ + amount);
+}
+
+void Player::record_sale_income(int amount) {
+    if (amount > 0) daily_sales_income_ += amount;
+}
+
+std::string Player::start_new_day_economy() {
+    std::string message;
+
+    if (pending_dividend_ > 0) {
+        add_money(pending_dividend_);
+        message += "Co-op dividend +" + std::to_string(pending_dividend_) + "G. ";
+        pending_dividend_ = 0;
+    }
+
+    if (has_int_node(2)) {
+        int interest = std::min(100, std::max(0, money_ / 100));
+        if (interest > 0) {
+            add_money(interest);
+            message += "Interest +" + std::to_string(interest) + "G. ";
+        }
+    }
+
+    if (has_int_node(4) && daily_sales_income_ > 0) {
+        pending_dividend_ = daily_sales_income_ / 10;
+        if (pending_dividend_ > 0) {
+            message += "Co-op dividend reserved +" + std::to_string(pending_dividend_) + "G for tomorrow. ";
+        }
+    }
+
+    daily_sales_income_ = 0;
+    return message;
+}
+
+int Player::discounted_upgrade_cost(int base_cost) const {
+    if (base_cost <= 0) return base_cost;
+    return has_int_node(1) ? std::max(1, base_cost * 80 / 100) : base_cost;
+}
+
+int Player::discounted_market_buy_price(int base_price) const {
+    if (base_price <= 0) return base_price;
+    return has_int_node(3) ? std::max(1, base_price * 90 / 100) : base_price;
+}
+
+int Player::monster_food_sell_price(int base_price) const {
+    if (base_price <= 0) return base_price;
+    return has_int_node(5) ? base_price * 110 / 100 : base_price;
+}
+
+int Player::monster_food_success_chance() const {
+    int chance = 20;
+    if (has_int_node(6)) chance += 20;
+    if (has_int_node(8)) chance += 20;
+    return std::min(95, chance);
+}
+
+bool Player::protects_monster_food_failure() const {
+    return has_int_node(7) && (std::rand() % 100 < 50);
+}
+
+bool Player::should_refund_seed() const {
+    return has_luk_node(1) && (std::rand() % 100 < 10);
+}
+
+bool Player::should_skip_harvest_stamina() const {
+    return has_str_node(5) && (std::rand() % 100 < 20);
+}
+
+bool Player::should_double_livestock_product() const {
+    return has_luk_node(2) && (std::rand() % 100 < 20);
+}
+
+bool Player::should_save_cooking_ingredient() const {
+    return has_luk_node(4);
+}
+
+bool Player::should_trigger_starry_night() const {
+    int chance = has_luk_node(5) ? 10 : 1;
+    return std::rand() % 100 < chance;
 }

@@ -21,7 +21,7 @@ void Renderer::add_message(const std::string& msg) {
 }
 
 void Renderer::clear_screen() {
-    std::cout << "\033[2J\033[H" << std::flush;
+    std::cout << "\033[2J\033[H";
 }
 
 void Renderer::draw_status_bar(const Player& player) {
@@ -40,7 +40,7 @@ void Renderer::draw_status_bar(const Player& player) {
 
     std::cout << "💰 " << player.get_money() << "G   ⚡ " << player.get_stamina() << "/" << player.get_stamina_max()
               << "   🎒 " << player.inventory().used_slots() << "/" << player.inventory().max_slots()
-              << "   🛠️🌱 " << player.get_hoe_grade() << " 🎣 " << player.get_rod_grade() << " ⛏️  " << player.get_pick_grade();
+              << "   🛠️ 도구등급 " << player.get_tool_grade();
     if (player.is_sick_today()) std::cout << "   🤧 감기";
     std::cout << "\n";
     std::cout << "═══════════════════════════════════════════════\n";
@@ -50,21 +50,16 @@ void Renderer::draw_map(const Player& player, const Map& map) {
     for (int y = 0; y < Map::HEIGHT; ++y) {
         for (int x = 0; x < Map::WIDTH; ++x) {
             if (x == player.get_x() && y == player.get_y()) {
-                std::cout << "🧑";
+                std::cout << "🧑‍🌾";
+                continue;
+            }
+
+            if (x == Map::MINE_X && y == Map::MINE_Y) {
+                std::cout << "⛏️ ";
                 continue;
             }
 
             const Tile& tile = map.get_tile(x, y);
-
-            if (tile.building_name == "광산") {
-                std::cout << "⛏️ ";
-                continue;
-            }
-            
-            if (tile.type == TileType::PATH && tile.building_name == "나무") {
-                std::cout << "🌲";
-                continue;
-            }
 
             if (tile.has_crop()) {
                 if (tile.crop_progress >= tile.crop_max_progress && tile.crop_harvest_cooldown == 0) {
@@ -97,9 +92,14 @@ void Renderer::draw_map(const Player& player, const Map& map) {
 
             if (!tile.building_name.empty()) {
                 if (tile.building_name == "주방") std::cout << "🍳";
-                else if (tile.building_name == "작업장") std::cout << "🔨";
+                else if (tile.building_name == "작업장" || tile.building_name == "Workshop") std::cout << "🔨";
                 else if (tile.building_name == "저장소") std::cout << "📦";
                 else std::cout << "🏡";
+                continue;
+            }
+
+            if (tile.type == TileType::TREE) {
+                std::cout << "🌳";
                 continue;
             }
 
@@ -117,51 +117,34 @@ void Renderer::draw_message() {
 
 void Renderer::draw_menu() {
     std::cout << "───────────────────────────────────────────────\n";
-    std::cout << "🎮 [W/A/S/D] 이동 | [J] 상호작용 | [E] 가방 | [P] 스킬창 | [Q] 종료\n";
-    std::cout << "   ※ 잠자기=침대에서 J, 구매/판매=상점(🏪)에서 J\n";
+    std::cout << "🎮 [W/A/S/D] 이동 | [J] 위치 상호작용 | [E] 가방 | [Q] 종료\n";
+    std::cout << "   ※ 잠자기=침대에서 J, 구매/판매=상점에서 J, 작업장=건축 부지에서 건설 후 이용\n";
     std::cout << "───────────────────────────────────────────────\n";
     std::cout << "> " << std::flush;
 }
 
 std::string Renderer::current_zone_name(const Player& player, const Map& map) const {
+    if (player.get_x() == Map::MINE_X && player.get_y() == Map::MINE_Y) return "⛏️ 보물 광산지대";
+
     const Tile& current_tile = map.get_tile(player.get_x(), player.get_y());
-    
-    if (current_tile.building_name == "광산") return "⛏️ 보물 광산지대";
-    if (current_tile.building_name == "나무") return "🌲 야생의 나무";
+    if (current_tile.building_name == "상점") return "🏪 피에르 잡화점";
     if (current_tile.building_name == "주방") return "🍳 요리 주방";
-    if (current_tile.building_name == "작업장") return "🔨 작업장";
+    if (current_tile.building_name == "작업장" || current_tile.building_name == "Workshop") return "🔨 작업장";
     if (current_tile.building_name == "저장소") return "📦 저장소";
 
     TileType type = current_tile.type;
     switch (type) {
         case TileType::WATER:     return "🟦 물가";
         case TileType::SAND:      return "🟨 강변 낚시터";
-        case TileType::LIVESTOCK: {
-            if (current_tile.has_animal()) {
-                if (current_tile.animal_type == 1) return "🟫 사육장 (🐔 닭)";
-                else if (current_tile.animal_type == 2) return "🟫 사육장 (🐖 돼지)";
-                else if (current_tile.animal_type == 3) return "🟫 사육장 (🐄 소)";
-                else return "🟫 사육장 (가축 있음)";
-            }
-            return "🟫 빈 사육장";
-        }
-        case TileType::FARM: {
-            if (current_tile.has_crop()) {
-                if (current_tile.crop_id == 1) return "🟩 농경지 (🥔 감자)";
-                else if (current_tile.crop_id == 2) return "🟩 농경지 (🥕 당근)";
-                else if (current_tile.crop_id == 3) return "🟩 농경지 (🌾 밀)";
-                else if (current_tile.crop_id == 4) return "🟩 농경지 (🌾 쌀)";
-                else if (current_tile.crop_id == 5) return "🟩 농경지 (🍎 사과나무)";
-                else return "🟩 농경지 (작물 심어짐)";
-            }
-            return "🟩 빈 농경지";
-        }
+        case TileType::LIVESTOCK: return "🟫 가축 사육장";
+        case TileType::FARM:      return "🟩 비옥한 농경지";
         case TileType::PATH:      return "⬜ 자갈 마당";
         case TileType::BUILDING:  return "🏡 농장 건축 부지";
         case TileType::BED:       return "🛏️ 침대";
         case TileType::MARKET:    return "🏪 피에르 잡화점";
         case TileType::KITCHEN:   return "🍳 요리 주방";
         case TileType::WORKSHOP:  return "🔨 작업장";
+        case TileType::TREE:      return "🌳 목재 나무";
     }
     return "?";
 }
@@ -178,6 +161,7 @@ std::string Renderer::tile_to_emoji(TileType type) const {
         case TileType::MARKET:    return "🏪";
         case TileType::KITCHEN:   return "🍳";
         case TileType::WORKSHOP:  return "🔨";
+        case TileType::TREE:      return "🌳";
     }
     return "❓";
 }

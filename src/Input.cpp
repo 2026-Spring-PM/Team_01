@@ -78,20 +78,3 @@ void wait_key() {
     getch();
     drain_input();
 }
-
-std::optional<ItemType> map_key_to_item(char ch) {
-    switch (ch) {
-        case 'a': return ItemType::POTATO;
-        case 'b': return ItemType::CARROT;
-        case 'c': return ItemType::WHEAT;
-        case 'd': return ItemType::RICE;
-        case 'e': return ItemType::EGG;
-        case 'f': return ItemType::MILK;
-        case 'g': return ItemType::PORK;
-        case 'h': return ItemType::APPLE;
-        case 'i': return ItemType::FISH_MACKEREL;
-        case 'j': return ItemType::FISH_FLATFISH;
-        case 'k': return ItemType::FISH_TUNA;
-        default:  return std::nullopt;
-    }
-}

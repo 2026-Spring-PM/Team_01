@@ -3,17 +3,15 @@
 #include <cstdlib>
 #include <sstream>
 
-// 작물 데이터 테이블
-// { id, seed, product, name, growth_days, perennial, min_yield, max_yield, xp }
 static const CropInfo CROPS[] = {
-    {1, ItemType::SEED_POTATO, ItemType::POTATO, "감자", 1, false, 1, 3, 3},
-    {2, ItemType::SEED_CARROT, ItemType::CARROT, "당근", 2, false, 1, 3, 4},
-    {3, ItemType::SEED_WHEAT,  ItemType::WHEAT,  "밀",   3, false, 2, 3, 5},
-    {4, ItemType::SEED_RICE,   ItemType::RICE,   "쌀",   3, false, 2, 3, 6},
-    {5, ItemType::SEED_APPLE,  ItemType::APPLE,  "사과나무", 5, true, 1, 3, 8},
+    {1, ItemType::SEED_POTATO, ItemType::POTATO, "감자", 3, false, 2, 4, 30},
+    {2, ItemType::SEED_CARROT, ItemType::CARROT, "당근", 4, false, 2, 4, 40},
+    {3, ItemType::SEED_WHEAT, ItemType::WHEAT, "밀", 5, false, 3, 5, 50},
+    {4, ItemType::SEED_RICE, ItemType::RICE, "쌀", 6, false, 2, 4, 60},
+    {5, ItemType::SEED_APPLE, ItemType::APPLE, "사과나무", 7, true, 1, 3, 80},
 };
 
-static constexpr int PERENNIAL_COOLDOWN = 3; // 다년생 작물 재성장 대기 일수
+static constexpr int PERENNIAL_COOLDOWN = 3;
 static constexpr int PLANT_STAMINA_COST = 1;
 static constexpr int WATER_STAMINA_COST = 2;
 
@@ -33,11 +31,11 @@ const CropInfo* CropSystem::get_crop_info_by_seed(ItemType seed) {
 
 bool CropSystem::plant_crop(Player& player, Tile& tile, int crop_id, std::string& message) {
     if (tile.type != TileType::FARM) {
-        message = "농경지에서만 씨앗을 심을 수 있습니다.";
+        message = "씨앗은 밭 타일에만 심을 수 있습니다.";
         return false;
     }
     if (tile.has_crop()) {
-        message = "이미 작물이 심겨 있습니다.";
+        message = "이미 작물이 심어져 있습니다.";
         return false;
     }
 
@@ -47,11 +45,11 @@ bool CropSystem::plant_crop(Player& player, Tile& tile, int crop_id, std::string
         return false;
     }
     if (player.count_item(info->seed) <= 0) {
-        message = std::string(info->name) + " 씨앗이 없습니다.";
+        message = item_name(info->seed) + "이(가) 없습니다.";
         return false;
     }
     if (!player.use_stamina(PLANT_STAMINA_COST)) {
-        message = "스태미나가 부족합니다. (필요: " + std::to_string(PLANT_STAMINA_COST) + ")";
+        message = "스태미나가 부족합니다. 필요: " + std::to_string(PLANT_STAMINA_COST);
         return false;
     }
 
@@ -63,7 +61,9 @@ bool CropSystem::plant_crop(Player& player, Tile& tile, int crop_id, std::string
     tile.crop_harvest_cooldown = 0;
     tile.is_occupied = true;
 
-    message = std::string(info->name) + " 씨앗을 심었습니다. " + std::to_string(info->growth_days) + "일 후 수확 가능합니다. 스태미나 -" + std::to_string(PLANT_STAMINA_COST);
+    message = std::string(info->name) + "을(를) 심었습니다. "
+            + std::to_string(info->growth_days) + "일 후 수확할 수 있습니다. 스태미나 -"
+            + std::to_string(PLANT_STAMINA_COST);
     return true;
 }
 
@@ -75,45 +75,51 @@ bool CropSystem::harvest_crop(Player& player, Tile& tile, std::string& message) 
 
     const CropInfo* info = get_crop_info(tile.crop_id);
     if (!info) {
-        message = "작물 정보가 손상되었습니다.";
+        message = "작물 정보가 올바르지 않습니다.";
         return false;
     }
     if (tile.crop_progress < tile.crop_max_progress) {
-        message = std::string(info->name) + "이(가) 아직 자라는 중입니다. (";
-        message += std::to_string(tile.crop_progress) + "/" + std::to_string(tile.crop_max_progress) + "일)";
+        message = std::string(info->name) + "은(는) 아직 자라는 중입니다. ("
+                + std::to_string(tile.crop_progress) + "/"
+                + std::to_string(tile.crop_max_progress) + ")";
         return false;
     }
     if (tile.crop_harvest_cooldown > 0) {
-        message = std::string(info->name) + "이(가) 재성장 중입니다. (" + std::to_string(tile.crop_harvest_cooldown) + "일 남음)";
+        message = std::string(info->name) + "은(는) 다시 열매를 맺는 중입니다. 남은 일수: "
+                + std::to_string(tile.crop_harvest_cooldown);
         return false;
     }
 
     int stamina_cost = player.get_harvest_stamina_cost();
-    if (!player.use_stamina(stamina_cost)) {
-        message = "스태미나가 부족합니다. (필요: " + std::to_string(stamina_cost) + ")";
+    bool free_harvest = player.should_skip_harvest_stamina();
+    if (!free_harvest && !player.use_stamina(stamina_cost)) {
+        message = "스태미나가 부족합니다. 필요: " + std::to_string(stamina_cost);
         return false;
     }
 
     int yield = info->min_yield + std::rand() % (info->max_yield - info->min_yield + 1);
     if (!player.add_item(info->product, yield)) {
-        player.restore_stamina(stamina_cost);
-        message = "가방 공간이 부족합니다.";
+        if (!free_harvest) player.restore_stamina(stamina_cost);
+        message = "인벤토리 공간이 부족합니다.";
         return false;
     }
+
+    bool refunded_seed = player.should_refund_seed();
+    if (refunded_seed) player.add_item(info->seed, 1);
 
     player.add_exp(info->xp);
 
     std::ostringstream oss;
-    oss << info->name << " " << yield << "개를 수확했습니다. XP +" << info->xp
-        << ", 스태미나 -" << stamina_cost;
+    oss << info->name << " 수확 x" << yield << ". XP +" << info->xp
+        << ", 스태미나 -" << (free_harvest ? 0 : stamina_cost);
+    if (free_harvest) oss << " (대지의 아들)";
+    if (refunded_seed) oss << " (씨앗 환급)";
 
     if (info->perennial) {
-        // 다년생: 진행도 초기화 후 재성장 대기
         tile.crop_progress = 0;
         tile.crop_harvest_cooldown = PERENNIAL_COOLDOWN;
-        oss << " (다년생 작물: " << PERENNIAL_COOLDOWN << "일 후 재수확 가능)";
+        oss << " " << PERENNIAL_COOLDOWN << "일 뒤 다시 수확할 수 있습니다.";
     } else {
-        // 일년생: 작물 제거
         tile.crop_id = 0;
         tile.crop_progress = 0;
         tile.crop_max_progress = 0;
@@ -130,7 +136,6 @@ void CropSystem::grow_crop(Tile& tile) {
     if (!tile.has_crop()) return;
 
     if (tile.crop_harvest_cooldown > 0) {
-        // 다년생 재성장 대기 중
         --tile.crop_harvest_cooldown;
         return;
     }
@@ -145,15 +150,16 @@ bool CropSystem::water_crop(Player& player, Tile& tile, std::string& message) {
         return false;
     }
     if (tile.watered_today) {
-        message = "오늘 이미 물을 주었습니다.";
+        message = "오늘 이미 물을 준 작물입니다.";
         return false;
     }
     if (!player.use_stamina(WATER_STAMINA_COST)) {
-        message = "스태미나가 부족합니다. (필요: " + std::to_string(WATER_STAMINA_COST) + ")";
+        message = "스태미나가 부족합니다. 필요: " + std::to_string(WATER_STAMINA_COST);
         return false;
     }
 
     tile.watered_today = true;
-    message = "작물에 물을 주었습니다. 가뭄으로부터 보호됩니다. 스태미나 -" + std::to_string(WATER_STAMINA_COST);
+    message = "물을 주었습니다. 오늘 가뭄 피해를 막습니다. 스태미나 -"
+            + std::to_string(WATER_STAMINA_COST);
     return true;
 }

@@ -9,7 +9,7 @@
 
 class Player {
 public:
-    static constexpr int INITIAL_MONEY = 25;
+    static constexpr int INITIAL_MONEY = 50;
     static constexpr int INITIAL_INVENTORY_SLOTS = 40;
 
     Player();
@@ -35,6 +35,7 @@ public:
 
     int get_x() const { return x_; }
     int get_y() const { return y_; }
+    void set_position(int x, int y);
     int get_money() const { return money_; }
     int get_stamina() const { return stamina_; }
     int get_stamina_max() const { return stamina_limit_ > 0 ? stamina_limit_ : get_true_stamina_max(); }
@@ -46,30 +47,25 @@ public:
     int get_storage_level() const { return storage_level_; }
     void set_storage_level(int level);
 
-    // 농기구 3종 슬롯 (0=없음, 1=동제, 2=철제, 3=금제)
+    int get_tool_grade() const { return hoe_grade_; }
     int get_hoe_grade() const { return hoe_grade_; }
     int get_rod_grade() const { return rod_grade_; }
     int get_pick_grade() const { return pick_grade_; }
-    int get_tool_grade() const { return hoe_grade_; }
-    
-    void set_hoe_grade(int grade) { hoe_grade_ = (grade<0)?0:(grade>3)?3:grade; }
-    void set_rod_grade(int grade) { rod_grade_ = (grade<0)?0:(grade>3)?3:grade; }
-    void set_pick_grade(int grade) { pick_grade_ = (grade<0)?0:(grade>3)?3:grade; }
+    void set_tool_grade(int grade) { set_hoe_grade(grade); }
+    void set_hoe_grade(int grade);
+    void set_rod_grade(int grade);
+    void set_pick_grade(int grade);
 
     char get_facing() const { return facing_; }
+    void set_facing(char facing) { facing_ = facing; }
     int get_harvest_stamina_cost() const;
     int get_fishing_stamina_cost() const;
     int get_mining_stamina_cost() const;
 
-    // 스킬 포인트 시스템
     int get_skill_points() const { return skill_points_; }
-
-    // 트리별 투자 함수 
     bool invest_str_node(int node_id, std::string& message);
     bool invest_int_node(int node_id, std::string& message);
     bool invest_luk_node(int node_id, std::string& message);
-
-    // 각 스킬의 해금 여부를 확인하는 getter
     bool has_str_node(int node_id) const;
     bool has_int_node(int node_id) const;
     bool has_luk_node(int node_id) const;
@@ -80,18 +76,31 @@ public:
     const std::string& get_levelup_message() const { return levelup_message_; }
     void clear_levelup_message() { levelup_message_.clear(); }
 
-    // 별 내리는 밤 이벤트 활성화 여부
     bool is_starry_night() const { return starry_night_days_ > 0; }
     void activate_starry_night(int days) { starry_night_days_ = days; }
     void tick_starry_night() { if (starry_night_days_ > 0) --starry_night_days_; }
 
-    // 야생동물 출몰 이벤트
     bool is_wildlife_today() const { return wildlife_today_; }
-    void set_wildlife_today(bool v) { wildlife_today_ = v; }
+    void set_wildlife_today(bool value) { wildlife_today_ = value; }
 
-    // 괴식 판매
     bool has_sold_monster_food() const { return sold_monster_food_; }
     void set_sold_monster_food(bool sold) { sold_monster_food_ = sold; }
+    int get_shop_trust() const { return shop_trust_; }
+    void lower_shop_trust(int amount);
+    void restore_shop_trust(int amount);
+    bool is_shop_restricted() const { return shop_trust_ <= 30; }
+    void record_sale_income(int amount);
+    std::string start_new_day_economy();
+    int discounted_upgrade_cost(int base_cost) const;
+    int discounted_market_buy_price(int base_price) const;
+    int monster_food_sell_price(int base_price) const;
+    int monster_food_success_chance() const;
+    bool protects_monster_food_failure() const;
+    bool should_refund_seed() const;
+    bool should_skip_harvest_stamina() const;
+    bool should_double_livestock_product() const;
+    bool should_save_cooking_ingredient() const;
+    bool should_trigger_starry_night() const;
 
 private:
     int x_;
@@ -99,7 +108,7 @@ private:
     int money_;
     int stamina_;
     int day_;
-    int hoe_grade_;    // 0~3
+    int hoe_grade_;
     int rod_grade_;
     int pick_grade_;
     int storage_level_;
@@ -108,15 +117,15 @@ private:
     bool sick_today_;
     bool wildlife_today_;
     int starry_night_days_;
-    std::string levelup_message_;
-
-    // 스킬 포인트
     int skill_points_;
-    bool str_nodes_[7] = { false, false, false, false, false, false, false };
-    bool int_nodes_[9] = { false, false, false, false, false, false, false, false, false };
-    bool luk_nodes_[7] = { false, false, false, false, false, false, false };
-
-    bool sold_monster_food_ = false;
+    bool str_nodes_[7];
+    bool int_nodes_[9];
+    bool luk_nodes_[7];
+    bool sold_monster_food_;
+    int shop_trust_;
+    int daily_sales_income_;
+    int pending_dividend_;
+    std::string levelup_message_;
 
     LevelSystem level_system_;
     Inventory<ItemType> inventory_;
