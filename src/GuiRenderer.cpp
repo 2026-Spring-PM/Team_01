@@ -1474,9 +1474,19 @@ void GuiRenderer::draw_rect_outline(int x, int y, int w, int h, SDL_Color color)
 
 bool GuiRenderer::load_font() {
     const char* candidates[] = {
+        // Cross-platform bundled font
+        "assets/NanumGothic.ttf",
+        // macOS CJK Fonts
+        "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        // Windows CJK Fonts
+        "C:\\Windows\\Fonts\\malgun.ttf",
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        // Linux CJK Fonts
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        // Fallbacks
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
     };
