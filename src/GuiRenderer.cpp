@@ -609,7 +609,7 @@ void GuiRenderer::show_event_popup(const std::string& title, const std::string& 
         draw_text(title, panel_x + 36, panel_y + 82, SDL_Color{255, 245, 196, 255}, panel_w - 72);
 
         int y = panel_y + 158;
-        for (const auto& line : wrap_text(message, 668)) {
+        for (const auto& line : wrap_text(message, panel_w - 96)) {
             draw_text(line, panel_x + 48, y, SDL_Color{238, 230, 207, 255}, panel_w - 96);
             y += 30;
         }
@@ -822,15 +822,18 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
         }
 
         int y = panel_y + 86;
-        for (const auto& line : wrap_text(tutorial.current_dialogue(), 752)) {
-            draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
+        // 텍스트 시작 x: panel_x + margin + 180, 끝 x: panel_x + panel_w - margin
+        // 실제 너비 = panel_w - margin*2 - 180 = 572px
+        const int text_w_tut = panel_w - margin * 2 - 180;
+        for (const auto& line : wrap_text(tutorial.current_dialogue(), text_w_tut)) {
+            draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, text_w_tut);
             y += 24;
             if (y > panel_y + panel_h - 116) break;
         }
 
         std::ostringstream progress;
         progress << (tutorial.current_step() + 1) << " / " << tutorial.total_steps();
-        draw_text(progress.str(), panel_x + margin + 180, panel_y + panel_h - 116, SDL_Color{214, 200, 170, 255}, panel_w - margin * 2);
+        draw_text(progress.str(), panel_x + margin + 180, panel_y + panel_h - 116, SDL_Color{214, 200, 170, 255}, text_w_tut);
 
         fill_rect(skip_rect.x, skip_rect.y, skip_rect.w, skip_rect.h, SDL_Color{92, 70, 62, 255});
         draw_rect_outline(skip_rect.x, skip_rect.y, skip_rect.w, skip_rect.h, SDL_Color{232, 190, 95, 255});
@@ -2157,58 +2160,34 @@ int GuiRenderer::fishing_hit_width_for_level(int level) const {
 void GuiRenderer::draw_fishing_frame(int rod_grade, int pos, int great_start, int great_end, int perfect_pos, bool has_perfect, int bar_width) {
     SDL_SetRenderDrawColor(renderer_, 14, 25, 38, 255);
     SDL_RenderClear(renderer_);
-    // 낚시 UI는 기존에 바늘 표시가 안내 문구와 판정 바를 함께 덮어서
-    // 텍스트/바/판정 표시가 겹쳐 보일 수 있었다. 패널, 설명 영역, 판정 바,
-    // 바늘 표시 영역을 명확히 분리해서 어떤 위치에서도 UI가 겹치지 않게 한다.
-    const int panel_w = std::min(840, WINDOW_WIDTH - 140);
-    const int panel_h = 430;
-    const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
-    const int panel_y = (WINDOW_HEIGHT - panel_h) / 2;
-    const int cell = 30;
-    const int bar_h = 52;
-    const int bar_w = bar_width * cell;
-    const int bar_x = panel_x + (panel_w - bar_w) / 2;
-    const int bar_y = panel_y + 232;
+    const int box_x = 120;
+    const int box_y = 250;
+    const int cell = 34;
+    const int bar_h = 54;
+    fill_rect(box_x - 22, box_y - 118, bar_width * cell + 44, 270, SDL_Color{38, 45, 58, 240});
+    SDL_Rect fish{box_x + 60, box_y - 96, 96, 48}; draw_texture("fish_mackerel", fish);
+    SDL_Rect tuna{box_x + 520, box_y - 96, 108, 54}; draw_texture("fish_tuna", tuna);
 
-    fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{8, 16, 28, 255});
-    fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{38, 45, 58, 245});
-    draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{118, 151, 185, 255});
-
-    SDL_Rect fish{panel_x + 34, panel_y + 28, 104, 56};
-    draw_texture("fish_mackerel", fish);
-    SDL_Rect tuna{panel_x + panel_w - 142, panel_y + 28, 112, 60};
-    draw_texture("fish_tuna", tuna);
-
-    draw_text("낚시 미니게임", panel_x + 170, panel_y + 28, SDL_Color{255, 245, 213, 255}, panel_w - 340);
-
-    draw_text("스페이스 / 엔터 / 마우스 클릭으로 바늘을 멈추세요.", panel_x + 46, panel_y + 116, SDL_Color{255, 245, 213, 255}, panel_w - 92);
-    draw_text("초록색은 Great, 노란색 P 칸은 Perfect 판정입니다.", panel_x + 46, panel_y + 150, SDL_Color{181, 224, 255, 255}, panel_w - 92);
-
-    fill_rect(bar_x - 12, bar_y - 12, bar_w + 24, bar_h + 24, SDL_Color{23, 29, 40, 255});
-    draw_rect_outline(bar_x - 12, bar_y - 12, bar_w + 24, bar_h + 24, SDL_Color{99, 116, 139, 255});
+    std::ostringstream info;
+    info << "낚싯대 레벨 " << rod_grade << "  |  ";
+    if (has_perfect) info << "완벽 판정: 중앙 1칸 / ";
+    else info << "완벽 판정: 구리 낚싯대부터 해금 / ";
+    info << "성공 판정: " << great_start << "~" << great_end;
+    draw_text("스페이스/엔터/마우스 클릭으로 바늘을 멈추세요.", box_x, box_y - 38, SDL_Color{255, 245, 213, 255}, bar_width * cell);
+    draw_text(info.str(), box_x, box_y - 12, SDL_Color{214, 200, 170, 255}, bar_width * cell);
 
     for (int i = 0; i < bar_width; ++i) {
-        SDL_Color c = (i >= great_start && i <= great_end)
-            ? SDL_Color{80, 210, 95, 255}
-            : SDL_Color{204, 198, 170, 255};
+        SDL_Color c = (i >= great_start && i <= great_end) ? SDL_Color{80, 210, 95, 255} : SDL_Color{204, 198, 170, 255};
         if (has_perfect && i == perfect_pos) c = SDL_Color{255, 196, 61, 255};
-        fill_rect(bar_x + i * cell, bar_y, cell - 2, bar_h, c);
-        draw_rect_outline(bar_x + i * cell, bar_y, cell - 2, bar_h, SDL_Color{43, 50, 60, 130});
+        fill_rect(box_x + i * cell, box_y, cell - 2, bar_h, c);
     }
-    // 바늘은 텍스트 영역까지 올라가지 않도록 판정 바 주변에만 그린다.
-    const int marker_x = bar_x + pos * cell + cell / 2;
-    fill_rect(marker_x - 4, bar_y - 22, 8, bar_h + 44, SDL_Color{255, 236, 68, 220});
-    draw_rect_outline(marker_x - 5, bar_y - 23, 10, bar_h + 46, SDL_Color{80, 54, 12, 220});
-    draw_text("V", marker_x - 6, bar_y - 48, SDL_Color{255, 236, 68, 255}, 20);
-    draw_text("^", marker_x - 6, bar_y + bar_h + 22, SDL_Color{255, 236, 68, 255}, 20);
-
     if (has_perfect) {
-        draw_text("P", bar_x + perfect_pos * cell + 9, bar_y + 14, SDL_Color{50, 32, 20, 255}, cell - 8);
+        draw_text("P", box_x + perfect_pos * cell + 10, box_y + 14, SDL_Color{50, 32, 20, 255}, cell - 8);
     }
+    fill_rect(box_x + pos * cell + 6, box_y - 34, cell - 12, bar_h + 62, SDL_Color{255, 236, 68, 210});
 
     double guide_ratio = static_cast<double>(great_end - great_start + 1) / static_cast<double>(bar_width);
-    draw_text("성공 구간 비율", bar_x, bar_y + 96, SDL_Color{214, 200, 170, 255}, 160);
-    draw_bar(bar_x + 150, bar_y + 98, bar_w - 150, 18, guide_ratio, SDL_Color{91, 181, 255, 255});
+    draw_bar(box_x, box_y + 78, bar_width * cell, 18, guide_ratio, SDL_Color{91, 181, 255, 255});
     SDL_RenderPresent(renderer_);
 }
 
