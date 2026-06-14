@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# 기존 과제 Docker 이미지에서 터미널 모드로 실행합니다.
-IMAGE_NAME="chwoong/team_00_project:0.1.0"
+IMAGE_NAME="${IMAGE_NAME:-team01-farm-sim:final}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL="*"
 
+if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
+    bash "${ROOT_DIR}/docker/docker_build.sh"
+fi
+
 docker run -it --rm \
   --platform linux/amd64 \
-  -v "/$(pwd):/workspace" \
-  -w //workspace \
+  -v "${ROOT_DIR}:/workspace" \
+  -w /workspace \
   --name farm-sim-container \
-  "$IMAGE_NAME" \
-  bash -c "bash scripts/build.sh && ./build/main"
+  "${IMAGE_NAME}" \
+  bash -lc "bash scripts/build.sh && ./build/main"

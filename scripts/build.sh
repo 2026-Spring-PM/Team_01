@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# 기본값은 터미널 모드입니다. GUI 빌드는 ENABLE_GUI=ON bash scripts/build.sh 로 실행하세요.
+# Default final-submission build is terminal mode for maximum compatibility.
+# Use ENABLE_GUI=ON bash scripts/build.sh to build the SDL2 GUI version.
 ENABLE_GUI_VALUE="${ENABLE_GUI:-OFF}"
 
-cmake -S . -B build -DENABLE_GUI=${ENABLE_GUI_VALUE}
+cmake -S . -B build -DENABLE_GUI="${ENABLE_GUI_VALUE}"
 cmake --build build
 
 echo ""
