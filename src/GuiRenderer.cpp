@@ -291,7 +291,7 @@ int GuiRenderer::show_choice(const std::string& title,
         draw_text(title, panel_x + margin, panel_y + 22, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
         int y = panel_y + 68;
         for (const auto& line : wrap_text(message, 48)) {
-            draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
+            draw_text(line, panel_x + margin, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             y += 24;
             if (y > panel_y + 220) break;
         }
@@ -321,14 +321,11 @@ int GuiRenderer::show_choice(const std::string& title,
         while (SDL_WaitEvent(&event)) {
             if (event.type == SDL_QUIT) return cancel_id;
             if (event.type == SDL_KEYDOWN) {
-                SDL_Keycode key = event.key.keysym.sym;
-                SDL_Scancode sc = event.key.keysym.scancode;
-                if (key == SDLK_ESCAPE || sc == SDL_SCANCODE_ESCAPE) return cancel_id;
-                if ((key == SDLK_RETURN || sc == SDL_SCANCODE_RETURN || sc == SDL_SCANCODE_SPACE) && !buttons.empty()) return buttons.front().first;
-                if (key == SDLK_0 || sc == SDL_SCANCODE_0) return cancel_id;
+                if (event.key.keysym.sym == SDLK_ESCAPE) return cancel_id;
+                if (event.key.keysym.sym == SDLK_RETURN && !buttons.empty()) return buttons.front().first;
+                if (event.key.keysym.sym == SDLK_0) return cancel_id;
                 int idx = -1;
-                if (sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_9) idx = sc - SDL_SCANCODE_1;
-                else if (key >= SDLK_1 && key <= SDLK_9) idx = key - SDLK_1;
+                if (event.key.keysym.sym >= SDLK_1 && event.key.keysym.sym <= SDLK_9) idx = event.key.keysym.sym - SDLK_1;
                 if (idx >= 0 && idx < static_cast<int>(buttons.size())) return buttons[static_cast<std::size_t>(idx)].first;
             }
             if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
@@ -344,6 +341,7 @@ int GuiRenderer::show_choice(const std::string& title,
                     if (SDL_PointInRect(&pt, &r)) return buttons[i].first;
                 }
             }
+            break;
         }
     }
 }
@@ -489,6 +487,7 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
                 if (SDL_PointInRect(&pt, &all)) { SDL_StopTextInput(); return max_quantity; }
                 if (SDL_PointInRect(&pt, &cancel)) { SDL_StopTextInput(); return 0; }
             }
+            break;
         }
     }
 }
@@ -549,6 +548,7 @@ void GuiRenderer::show_inventory(const Player& player) {
                 SDL_Rect close{panel_x + panel_w - 170, panel_y + panel_h - 68, 130, 42};
                 if (SDL_PointInRect(&pt, &close)) return;
             }
+            break;
         }
     }
 }
@@ -774,20 +774,19 @@ int GuiRenderer::show_shop_selector(const std::string& title,
             if (event.type == SDL_QUIT) return cancel_id;
             if (event.type == SDL_KEYDOWN) {
                 SDL_Keycode key = event.key.keysym.sym;
-                SDL_Scancode scancode = event.key.keysym.scancode;
-                if (key == SDLK_ESCAPE || key == SDLK_0 || scancode == SDL_SCANCODE_0) return cancel_id;
-                if ((key == SDLK_RETURN || key == SDLK_KP_ENTER || scancode == SDL_SCANCODE_SPACE) && selected_index >= 0 && selected_index < static_cast<int>(entries.size())) {
+                if (key == SDLK_ESCAPE || key == SDLK_0) return cancel_id;
+                if ((key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) && selected_index >= 0 && selected_index < static_cast<int>(entries.size())) {
                     if (!entries[static_cast<std::size_t>(selected_index)].disabled) return entries[static_cast<std::size_t>(selected_index)].id;
                     break;
                 }
-                if ((scancode == SDL_SCANCODE_S || key == SDLK_DOWN) && !entries.empty()) {
+                if ((key == SDLK_s || key == SDLK_DOWN) && !entries.empty()) {
                     selected_index = std::min(static_cast<int>(entries.size()) - 1, selected_index + 1);
                     int item_top = selected_index * row_h;
                     if (item_top + row_h > scroll_y + content_h) scroll_y = item_top + row_h - content_h;
                     scroll_y = std::max(0, std::min(scroll_y, max_scroll));
                     break;
                 }
-                if ((scancode == SDL_SCANCODE_W || key == SDLK_UP) && !entries.empty()) {
+                if ((key == SDLK_w || key == SDLK_UP) && !entries.empty()) {
                     selected_index = std::max(0, selected_index - 1);
                     int item_top = selected_index * row_h;
                     if (item_top < scroll_y) scroll_y = item_top;
@@ -835,6 +834,7 @@ int GuiRenderer::show_shop_selector(const std::string& title,
                 scroll_y = std::max(0, std::min(scroll_y, max_scroll));
                 break;
             }
+            break;
         }
     }
 }
@@ -865,8 +865,7 @@ int GuiRenderer::show_action_panel(const std::string& title,
     int selected = 0;
     int scroll_offset = 0;
 
-    /* unused */
-    auto keep_selected_visible_real = [&]() {
+    auto keep_selected_visible = [&]() {
         if (actions.empty()) {
             selected = 0;
             scroll_offset = 0;
@@ -881,13 +880,6 @@ int GuiRenderer::show_action_panel(const std::string& title,
         }
         scroll_offset = std::max(0, std::min(scroll_offset, max_scroll));
     };
-
-    const int list_area_y = list_y - 14;
-    const int list_area_h = panel_h - (list_y - panel_y) - margin;
-    const int content_y = list_y + 24;
-    const int content_h = list_area_y + list_area_h - content_y - 6;
-    int max_scroll = std::max(0, static_cast<int>(actions.size()) * row_h - content_h);
-    int scroll_y = 0;
 
     auto draw_locked_overlay = [&](int x, int y, int w, int h) {
         // 폰트/터미널 환경에 따라 LOCK 텍스트와 촘촘한 대각선 패턴이 깨져 보일 수 있어
@@ -925,17 +917,14 @@ int GuiRenderer::show_action_panel(const std::string& title,
             if (++status_lines >= 4) break;
         }
 
-        fill_rect(panel_x + margin, list_area_y, left_w, list_area_h, SDL_Color{31, 26, 20, 230});
-        draw_rect_outline(panel_x + margin, list_area_y, left_w, list_area_h, SDL_Color{128, 93, 48, 255});
+        fill_rect(panel_x + margin, list_y - 14, left_w, list_bottom - (list_y - 14), SDL_Color{31, 26, 20, 230});
+        draw_rect_outline(panel_x + margin, list_y - 14, left_w, list_bottom - (list_y - 14), SDL_Color{128, 93, 48, 255});
         draw_text("선택 목록 (W/S, Enter, 마우스)", panel_x + margin + 16, list_y - 6, SDL_Color{255, 221, 132, 255}, left_w - 32);
 
-        SDL_Rect clip{panel_x + margin + 2, content_y, left_w - 4, content_h};
-        SDL_RenderSetClipRect(renderer_, &clip);
-
-        for (std::size_t i = 0; i < actions.size(); ++i) {
-            int y = content_y + static_cast<int>(i) * row_h - scroll_y;
-            if (y + row_h < content_y || y > content_y + content_h) continue;
-            bool is_sel = static_cast<int>(i) == selected;
+        int visible_end = std::min(static_cast<int>(actions.size()), scroll_offset + max_visible_actions);
+        for (int i = scroll_offset; i < visible_end; ++i) {
+            int y = list_top + (i - scroll_offset) * row_h;
+            bool is_sel = i == selected;
             SDL_Color base = actions[i].disabled ? SDL_Color{65, 58, 50, 220} : SDL_Color{73, 54, 35, 235};
             if (is_sel) base = actions[i].disabled ? SDL_Color{88, 78, 63, 235} : SDL_Color{118, 78, 38, 245};
             int x = panel_x + margin + 14;
@@ -951,32 +940,16 @@ int GuiRenderer::show_action_panel(const std::string& title,
             if (!actions[i].subtitle.empty()) draw_text(actions[i].subtitle, tx, y + 36, SDL_Color{214, 200, 170, 255}, w - (tx - x) - 20);
             if (actions[i].disabled) draw_locked_overlay(x, y, w, row_h - 8);
         }
-        SDL_RenderSetClipRect(renderer_, nullptr);
 
-        if (max_scroll > 0) {
-            const int track_x = panel_x + margin + left_w - 12;
-            fill_rect(track_x, content_y, 8, content_h, SDL_Color{24, 20, 16, 255});
-            int thumb_h = std::max(40, content_h * content_h / std::max(content_h, static_cast<int>(actions.size()) * row_h));
-            int thumb_y = content_y + (content_h - thumb_h) * scroll_y / max_scroll;
-            fill_rect(track_x, thumb_y, 8, thumb_h, SDL_Color{210, 170, 85, 255});
-        }
-
-        fill_rect(right_x, panel_y + 62, right_w, 270, SDL_Color{31, 26, 20, 230});
-        draw_rect_outline(right_x, panel_y + 62, right_w, 270, SDL_Color{128, 93, 48, 255});
-        draw_text(recipe_title, right_x + 16, panel_y + 74, SDL_Color{255, 221, 132, 255}, right_w - 32);
-        
-        if (selected >= 0 && selected < static_cast<int>(actions.size())) {
-            const auto& r = actions[selected];
-            int ry = panel_y + 112;
-            if (!r.icon_key.empty()) { SDL_Rect icon{right_x + 16, ry, 64, 64}; draw_texture(r.icon_key, icon); }
-            draw_text(r.title, right_x + 90, ry + 4, r.disabled ? SDL_Color{180, 170, 150, 255} : SDL_Color{255, 245, 213, 255}, right_w - 110);
-            
-            int subtitle_y = ry + 44;
-            for (const auto& line : wrap_text(r.subtitle, 36)) {
-                draw_text(line, right_x + 90, subtitle_y, SDL_Color{214, 200, 170, 255}, right_w - 110);
-                subtitle_y += 24;
-            }
-            if (r.disabled) draw_locked_overlay(right_x + 10, ry - 10, right_w - 20, std::max(80, subtitle_y - ry + 10));
+        if (static_cast<int>(actions.size()) > max_visible_actions) {
+            int track_x = panel_x + margin + left_w - 10;
+            int track_y = list_top;
+            int track_h = list_bottom - list_top - 8;
+            int max_scroll = static_cast<int>(actions.size()) - max_visible_actions;
+            int thumb_h = std::max(28, track_h * max_visible_actions / static_cast<int>(actions.size()));
+            int thumb_y = track_y + (max_scroll == 0 ? 0 : (track_h - thumb_h) * scroll_offset / max_scroll);
+            fill_rect(track_x, track_y, 5, track_h, SDL_Color{75, 58, 42, 220});
+            fill_rect(track_x, thumb_y, 5, thumb_h, SDL_Color{224, 184, 97, 240});
         }
 
         fill_rect(right_x, panel_y + 62, right_w, 260, SDL_Color{31, 26, 20, 230});
@@ -1020,25 +993,18 @@ int GuiRenderer::show_action_panel(const std::string& title,
             if (event.type == SDL_QUIT) return cancel_id;
             if (event.type == SDL_KEYDOWN) {
                 SDL_Keycode key = event.key.keysym.sym;
-                SDL_Scancode scancode = event.key.keysym.scancode;
-                if (key == SDLK_ESCAPE || key == SDLK_0 || scancode == SDL_SCANCODE_0) return cancel_id;
-                if ((scancode == SDL_SCANCODE_S || key == SDLK_DOWN) && !actions.empty()) {
+                if (key == SDLK_ESCAPE || key == SDLK_0) return cancel_id;
+                if ((key == SDLK_s || key == SDLK_DOWN) && !actions.empty()) {
                     selected = (selected + 1) % static_cast<int>(actions.size());
-                    int item_top = selected * row_h;
-                    if (item_top + row_h > scroll_y + content_h) scroll_y = item_top + row_h - content_h;
-                    else if (item_top < scroll_y) scroll_y = item_top;
-                    scroll_y = std::max(0, std::min(scroll_y, max_scroll));
+                    keep_selected_visible();
                     break;
                 }
-                if ((scancode == SDL_SCANCODE_W || key == SDLK_UP) && !actions.empty()) {
+                if ((key == SDLK_w || key == SDLK_UP) && !actions.empty()) {
                     selected = (selected - 1 + static_cast<int>(actions.size())) % static_cast<int>(actions.size());
-                    int item_top = selected * row_h;
-                    if (item_top < scroll_y) scroll_y = item_top;
-                    else if (item_top + row_h > scroll_y + content_h) scroll_y = item_top + row_h - content_h;
-                    scroll_y = std::max(0, std::min(scroll_y, max_scroll));
+                    keep_selected_visible();
                     break;
                 }
-                if ((scancode == SDL_SCANCODE_SPACE || key == SDLK_RETURN || key == SDLK_KP_ENTER) && selected >= 0 && selected < static_cast<int>(actions.size())) {
+                if ((key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) && selected >= 0 && selected < static_cast<int>(actions.size())) {
                     if (!actions[selected].disabled) return actions[selected].id;
                     break;
                 }
@@ -1064,6 +1030,7 @@ int GuiRenderer::show_action_panel(const std::string& title,
                     }
                 }
             }
+            break;
         }
     }
 }
@@ -1406,6 +1373,7 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
                     }
                 }
             }
+            break;
         }
     }
 }
@@ -1436,15 +1404,17 @@ bool GuiRenderer::poll_input(char& input) {
                 return true;
             }
             if (!event.key.repeat) {
-                SDL_Scancode scancode = event.key.keysym.scancode;
-                if (scancode == SDL_SCANCODE_J || scancode == SDL_SCANCODE_RETURN || scancode == SDL_SCANCODE_KP_ENTER || scancode == SDL_SCANCODE_SPACE) { input = 'j'; return true; }
-                if (scancode == SDL_SCANCODE_T) { input = 't'; return true; }
-                if (scancode == SDL_SCANCODE_E) { input = 'e'; return true; }
-                if (scancode == SDL_SCANCODE_P) { input = 'p'; return true; }
-                if (scancode == SDL_SCANCODE_I) { input = 'i'; return true; }
-                if (scancode == SDL_SCANCODE_U) { input = 'u'; return true; }
-                if (scancode == SDL_SCANCODE_5 || key == SDLK_5) { input = '5'; return true; }
-                if (scancode == SDL_SCANCODE_Q || key == SDLK_ESCAPE) { input = 'q'; return true; }
+                switch (key) {
+                    case SDLK_j: case SDLK_RETURN: case SDLK_KP_ENTER: case SDLK_SPACE: input = 'j'; return true;
+                    case SDLK_t: input = 't'; return true;
+                    case SDLK_e: input = 'e'; return true;
+                    case SDLK_p: input = 'p'; return true;
+                    case SDLK_i: input = 'i'; return true;
+                    case SDLK_u: input = 'u'; return true;
+                    case SDLK_5: input = '5'; return true;
+                    case SDLK_q: case SDLK_ESCAPE: input = 'q'; return true;
+                    default: break;
+                }
             }
         }
     }
@@ -1475,19 +1445,9 @@ void GuiRenderer::draw_rect_outline(int x, int y, int w, int h, SDL_Color color)
 
 bool GuiRenderer::load_font() {
     const char* candidates[] = {
-        // Cross-platform bundled font
-        "assets/NanumGothic.ttf",
-        // macOS CJK Fonts
-        "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
-        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
-        // Windows CJK Fonts
-        "C:\\Windows\\Fonts\\malgun.ttf",
-        "C:\\Windows\\Fonts\\msgothic.ttc",
-        // Linux CJK Fonts
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-        // Fallbacks
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
     };
@@ -1663,58 +1623,47 @@ void GuiRenderer::draw_side_panel(const Player& player, const std::string& messa
     draw_rect_outline(ox + 16, 16, PANEL_WIDTH - 32, WINDOW_HEIGHT - 32, SDL_Color{122, 94, 54, 255});
 
     draw_text("농장 마을", ox + 34, 28, SDL_Color{255, 221, 132, 255}, PANEL_WIDTH - 68);
-    
-    fill_rect(ox + 24, 66, PANEL_WIDTH - 48, 126, SDL_Color{30, 24, 20, 225});
-    draw_rect_outline(ox + 24, 66, PANEL_WIDTH - 48, 126, SDL_Color{122, 94, 54, 255});
-    draw_text("메시지", ox + 36, 78, SDL_Color{255, 221, 132, 255});
-    int y = 110;
-    for (const auto& line : wrap_text(message.empty() ? "WASD 이동 / J 상호작용 / E 인벤토리" : message, 28)) {
-        draw_text(line, ox + 36, y, SDL_Color{238, 230, 207, 255}, PANEL_WIDTH - 72);
-        y += 22;
-        if (y > 178) break;
-    }
-
-    draw_text("일차 / 계절", ox + 34, 210, SDL_Color{214, 197, 166, 255});
+    draw_text("일차 / 계절", ox + 34, 72, SDL_Color{214, 197, 166, 255});
     std::ostringstream day_season;
     day_season << player.get_day() << "  " << season_name(season_from_day(player.get_day()));
-    draw_text(day_season.str(), ox + 150, 210, SDL_Color{255, 245, 213, 255});
+    draw_text(day_season.str(), ox + 150, 72, SDL_Color{255, 245, 213, 255});
 
-    SDL_Rect coin{ox + 28, 246, 34, 34}; draw_texture("coin", coin);
-    draw_text("골드", ox + 72, 250, SDL_Color{214, 197, 166, 255});
-    draw_text(std::to_string(player.get_money()) + " G", ox + 150, 250, SDL_Color{255, 245, 213, 255});
+    SDL_Rect coin{ox + 28, 108, 34, 34}; draw_texture("coin", coin);
+    draw_text("골드", ox + 72, 112, SDL_Color{214, 197, 166, 255});
+    draw_text(std::to_string(player.get_money()) + " G", ox + 150, 112, SDL_Color{255, 245, 213, 255});
 
-    SDL_Rect level{ox + 28, 292, 34, 34}; draw_texture("level", level);
-    draw_text("레벨", ox + 72, 296, SDL_Color{214, 197, 166, 255});
-    draw_text("Lv." + std::to_string(player.get_level()), ox + 150, 296, SDL_Color{255, 245, 213, 255});
+    SDL_Rect level{ox + 28, 154, 34, 34}; draw_texture("level", level);
+    draw_text("레벨", ox + 72, 158, SDL_Color{214, 197, 166, 255});
+    draw_text("레벨 " + std::to_string(player.get_level()), ox + 140, 158, SDL_Color{255, 245, 213, 255});
 
-    SDL_Rect energy{ox + 28, 342, 34, 34}; draw_texture("energy", energy);
+    SDL_Rect energy{ox + 28, 204, 34, 34}; draw_texture("energy", energy);
     std::ostringstream stamina_text;
     stamina_text << "스태미나  " << player.get_stamina() << "/" << player.get_stamina_max();
-    draw_text(stamina_text.str(), ox + 72, 338, SDL_Color{255, 245, 213, 255}, 190);
-    draw_bar(ox + 72, 364, 190, 20,
+    draw_text(stamina_text.str(), ox + 72, 200, SDL_Color{255, 245, 213, 255}, 190);
+    draw_bar(ox + 72, 226, 190, 20,
              static_cast<double>(player.get_stamina()) / std::max(1, player.get_stamina_max()),
              SDL_Color{244, 190, 61, 255});
 
-    SDL_Rect xp_icon{ox + 28, 402, 34, 34}; draw_texture("xp", xp_icon);
+    SDL_Rect xp_icon{ox + 28, 264, 34, 34}; draw_texture("xp", xp_icon);
     int exp_to_next = player.get_exp_to_next();
     std::ostringstream xp_text;
     xp_text << "XP  " << player.get_exp() << " / " << (player.get_exp() + exp_to_next);
-    draw_text(xp_text.str(), ox + 72, 398, SDL_Color{255, 245, 213, 255}, 190);
-    draw_bar(ox + 72, 424, 190, 20,
+    draw_text(xp_text.str(), ox + 72, 260, SDL_Color{255, 245, 213, 255}, 190);
+    draw_bar(ox + 72, 286, 190, 20,
              exp_to_next <= 0 ? 1.0 : static_cast<double>(player.get_exp()) / std::max(1, player.get_exp() + exp_to_next),
              SDL_Color{91, 181, 255, 255});
 
-    SDL_Rect bag{ox + 28, 462, 34, 34}; draw_texture("bag", bag);
+    SDL_Rect bag{ox + 28, 324, 34, 34}; draw_texture("bag", bag);
     std::ostringstream inv_text;
     inv_text << "인벤토리  " << player.inventory().used_slots() << "/" << player.inventory().max_slots();
-    draw_text(inv_text.str(), ox + 72, 466, SDL_Color{255, 245, 213, 255}, 190);
-    draw_bar(ox + 72, 492, 190, 18,
+    draw_text(inv_text.str(), ox + 72, 328, SDL_Color{255, 245, 213, 255}, 190);
+    draw_bar(ox + 72, 354, 190, 18,
              static_cast<double>(player.inventory().used_slots()) / std::max(1, player.inventory().max_slots()),
              SDL_Color{117, 199, 121, 255});
 
-    draw_text("이벤트", ox + 34, 538, SDL_Color{255, 221, 132, 255});
+    draw_text("이벤트", ox + 34, 400, SDL_Color{255, 221, 132, 255});
     bool any_event = false;
-    int event_y = 574;
+    int event_y = 436;
     if (player.is_sick_today()) {
         SDL_Rect cold{ox + 34, event_y, 42, 42}; draw_texture("cold", cold);
         draw_text("감기: 스태미나 50%", ox + 86, event_y + 10, SDL_Color{238, 230, 207, 255}, 180);
@@ -1733,8 +1682,19 @@ void GuiRenderer::draw_side_panel(const Player& player, const std::string& messa
         }
         any_event = true;
     }
-    if (!any_event) draw_text("없음", ox + 34, 574, SDL_Color{188, 176, 150, 255});
+    if (!any_event) draw_text("없음", ox + 34, 436, SDL_Color{188, 176, 150, 255});
+
+    fill_rect(ox + 24, WINDOW_HEIGHT - 156, PANEL_WIDTH - 48, 126, SDL_Color{30, 24, 20, 225});
+    draw_rect_outline(ox + 24, WINDOW_HEIGHT - 156, PANEL_WIDTH - 48, 126, SDL_Color{122, 94, 54, 255});
+    draw_text("메시지", ox + 36, WINDOW_HEIGHT - 144, SDL_Color{255, 221, 132, 255});
+    int y = WINDOW_HEIGHT - 112;
+    for (const auto& line : wrap_text(message.empty() ? "WASD 이동 / J 상호작용 / E 인벤토리" : message, 28)) {
+        draw_text(line, ox + 36, y, SDL_Color{238, 230, 207, 255}, PANEL_WIDTH - 72);
+        y += 22;
+        if (y > WINDOW_HEIGHT - 44) break;
+    }
 }
+
 void GuiRenderer::update_window_title(const Player& player, const std::string& message) {
     (void)player;
     (void)message;

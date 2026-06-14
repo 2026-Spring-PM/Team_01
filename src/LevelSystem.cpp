@@ -29,31 +29,10 @@ int LevelSystem::get_exp_to_next_level() const {
     return required_exp_for_level(level_ + 1) - exp_;
 }
 
-// 경험치 테이블 (PDF 기준, 1/10 스케일)
-// Lv1-4: level*5
-// Lv5: 30
-// Lv6: 50
-// Lv7-9: level*10
-// Lv10: 150
-// Lv11-15: 200
-// Lv16: 400
-// Lv17-19: 500
-// Lv20: 1000
-// Lv21-29: 1500
-// Lv30: 3000
+// 경험치 테이블: 다음 레벨 요구 경험치 = target_level * 10
 int LevelSystem::required_exp_for_level(int target_level) {
     if (target_level <= 1) return 0;
-    if (target_level <= 4) return target_level * 20; // Lv2: 40, Lv3: 60, Lv4: 80
-    if (target_level == 5) return 100;
-    if (target_level == 6) return 150;
-    if (target_level <= 9) return target_level * 30; // Lv7: 210, Lv8: 240, Lv9: 270
-    if (target_level == 10) return 400;
-    if (target_level <= 15) return 600;
-    if (target_level == 16) return 1000;
-    if (target_level <= 19) return 1200;
-    if (target_level == 20) return 2000;
-    if (target_level <= 29) return 3000;
-    return 6000; // Lv30
+    return target_level * 10;
 }
 
 bool LevelSystem::is_bonus_level(int level) {

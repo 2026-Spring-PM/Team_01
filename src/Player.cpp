@@ -37,8 +37,12 @@ Player::Player()
       name_("초보 농부") {}
 
 void Player::set_position(int x, int y) {
-    x_ = std::max(0, std::min(Map::WIDTH - 1, x));
-    y_ = std::max(0, std::min(Map::HEIGHT - 1, y));
+    set_position(Position{x, y});
+}
+
+void Player::set_position(const Position& position) {
+    x_ = std::max(0, std::min(Map::WIDTH - 1, position.x));
+    y_ = std::max(0, std::min(Map::HEIGHT - 1, position.y));
 }
 
 bool Player::try_move(int dx, int dy, const Map& map) {
@@ -47,12 +51,10 @@ bool Player::try_move(int dx, int dy, const Map& map) {
     else if (dx < 0) facing_ = 'l';
     else if (dx > 0) facing_ = 'r';
 
-    int new_x = x_ + dx;
-    int new_y = y_ + dy;
-    if (!map.is_in_bounds(new_x, new_y)) return false;
-    if (!map.get_tile(new_x, new_y).is_walkable()) return false;
-    x_ = new_x;
-    y_ = new_y;
+    const Position next = get_position() + Position{dx, dy};
+    if (!map.is_in_bounds(next.x, next.y)) return false;
+    if (!map.get_tile(next.x, next.y).is_walkable()) return false;
+    set_position(next);
     return true;
 }
 
@@ -64,6 +66,11 @@ bool Player::try_sleep(const Map& map) {
 
 void Player::sleep_anywhere() {
     ++day_;
+    GameObject* daily_object = this;
+    daily_object->update();
+}
+
+void Player::update() {
     recover_daily_status();
 }
 
@@ -158,12 +165,7 @@ int Player::get_fishing_stamina_cost() const {
 }
 
 int Player::get_mining_stamina_cost() const {
-    switch (pick_grade_) {
-        case 1: return 6;
-        case 2: return 4;
-        case 3: return 2;
-        default: return 8;
-    }
+    return pick_grade_ >= 3 ? 3 : 5;
 }
 
 bool Player::has_str_node(int node_id) const {

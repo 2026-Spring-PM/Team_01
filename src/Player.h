@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GameObject.h"
 #include "Map.h"
 #include "Inventory.h"
 #include "ItemType.h"
@@ -7,7 +8,7 @@
 
 #include <string>
 
-class Player {
+class Player : public GameObject {
 public:
     static constexpr int INITIAL_MONEY = 50;
     static constexpr int INITIAL_INVENTORY_SLOTS = 40;
@@ -20,6 +21,12 @@ public:
     bool try_move(int dx, int dy, const Map& map);
     bool try_sleep(const Map& map);
     void sleep_anywhere();
+
+    // GameObject interface: used through a base-class pointer when a day passes.
+    void update() override;
+    Position get_position() const override { return Position{x_, y_}; }
+    void set_position(const Position& position) override;
+    std::string debug_name() const override { return name_; }
 
     void add_money(int amount);
     bool spend_money(int amount);

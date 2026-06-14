@@ -4,6 +4,28 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
+#include <sstream>
+
+
+void BarnAnimal::update() {
+    const double step = 0.045;
+    auto move_towards = [step](double current, double target) {
+        double diff = target - current;
+        if (std::abs(diff) <= step) return target;
+        return current + (diff > 0.0 ? step : -step);
+    };
+    visual_x = move_towards(visual_x, static_cast<double>(x));
+    visual_y = move_towards(visual_y, static_cast<double>(y));
+}
+
+void BarnAnimal::set_position(const Position& position) {
+    x = position.x;
+    y = position.y;
+}
+
+std::string BarnAnimal::debug_name() const {
+    return "BarnAnimal";
+}
 
 bool BarnSystem::is_inside(int x, int y) const {
     return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
@@ -15,15 +37,17 @@ bool BarnSystem::has_animal_at(int x, int y) const {
 
 
 BarnAnimal* BarnSystem::animal_at(int x, int y) {
+    const Position target{x, y};
     for (auto& a : animals_) {
-        if (a.x == x && a.y == y) return &a;
+        if (a.get_position() == target) return &a;
     }
     return nullptr;
 }
 
 const BarnAnimal* BarnSystem::animal_at(int x, int y) const {
+    const Position target{x, y};
     for (const auto& a : animals_) {
-        if (a.x == x && a.y == y) return &a;
+        if (a.get_position() == target) return &a;
     }
     return nullptr;
 }
@@ -171,13 +195,15 @@ static void front_delta_from_facing(char facing, int& dx, int& dy) {
 BarnAnimal* BarnSystem::front_animal(const Player& player) {
     int dx = 0, dy = 0;
     front_delta_from_facing(player.get_facing(), dx, dy);
-    return animal_at(player.get_x() + dx, player.get_y() + dy);
+    const Position target = player.get_position() + Position{dx, dy};
+    return animal_at(target.x, target.y);
 }
 
 const BarnAnimal* BarnSystem::front_animal(const Player& player) const {
     int dx = 0, dy = 0;
     front_delta_from_facing(player.get_facing(), dx, dy);
-    return animal_at(player.get_x() + dx, player.get_y() + dy);
+    const Position target = player.get_position() + Position{dx, dy};
+    return animal_at(target.x, target.y);
 }
 
 std::string BarnSystem::describe_animal(const BarnAnimal& animal) const {
@@ -185,7 +211,9 @@ std::string BarnSystem::describe_animal(const BarnAnimal& animal) const {
     const std::string name = info ? info->name : "가축";
     const bool adult = info && animal.tile.animal_age >= info->adult_age;
     std::string status = name + " 상태\n";
-    status += "위치: (" + std::to_string(animal.x + 1) + ", " + std::to_string(animal.y + 1) + ")\n";
+    std::ostringstream position_text;
+    position_text << Position{animal.x + 1, animal.y + 1};
+    status += "위치: " + position_text.str() + "\n";
     if (info) {
         status += "나이: " + std::to_string(animal.tile.animal_age) + "일 / 성체 기준 " + std::to_string(info->adult_age) + "일\n";
         status += std::string("성장 상태: ") + (adult ? "성체" : "새끼") + "\n";
@@ -265,15 +293,9 @@ void BarnSystem::advance_day() {
 }
 
 void BarnSystem::update_smooth_positions() {
-    const double step = 0.045;
     for (auto& a : animals_) {
-        auto move_towards = [step](double current, double target) {
-            double diff = target - current;
-            if (std::abs(diff) <= step) return target;
-            return current + (diff > 0.0 ? step : -step);
-        };
-        a.visual_x = move_towards(a.visual_x, static_cast<double>(a.x));
-        a.visual_y = move_towards(a.visual_y, static_cast<double>(a.y));
+        GameObject* object = &a;
+        object->update();
     }
 }
 
@@ -290,22 +312,21 @@ void BarnSystem::update_random_movement(const Player& player) {
 
     // If an animal is still visually walking toward its target, do not retarget it yet.
     if (std::abs(a.visual_x - a.x) > 0.05 || std::abs(a.visual_y - a.y) > 0.05) return;
-    if (std::abs(a.x - player.get_x()) + std::abs(a.y - player.get_y()) <= 1) return;
+    const Position player_position = player.get_position();
+    if (std::abs(a.x - player_position.x) + std::abs(a.y - player_position.y) <= 1) return;
 
     const int dirs[4][3] = {{1,0,'r'},{-1,0,'l'},{0,1,'f'},{0,-1,'b'}};
     int start = std::rand() % 4;
     for (int i = 0; i < 4; ++i) {
         int d = (start + i) % 4;
-        int nx = a.x + dirs[d][0];
-        int ny = a.y + dirs[d][1];
-        if (!is_inside(nx, ny)) continue;
+        const Position next = a.get_position() + Position{dirs[d][0], dirs[d][1]};
+        if (!is_inside(next.x, next.y)) continue;
         // Keep animals in the open pen floor, not on wall/exit/decorative outer tiles.
-        if (nx <= 1 || ny <= 1 || nx >= WIDTH - 2 || ny >= HEIGHT - 2) continue;
-        if (is_blocking_object(nx, ny)) continue;
-        if (nx == player.get_x() && ny == player.get_y()) continue;
-        if (has_animal_at(nx, ny)) continue;
-        a.x = nx;
-        a.y = ny;
+        if (next.x <= 1 || next.y <= 1 || next.x >= WIDTH - 2 || next.y >= HEIGHT - 2) continue;
+        if (is_blocking_object(next.x, next.y)) continue;
+        if (next == player_position) continue;
+        if (has_animal_at(next.x, next.y)) continue;
+        a.set_position(next);
         a.facing = static_cast<char>(dirs[d][2]);
         return;
     }

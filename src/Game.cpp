@@ -1,4 +1,4 @@
-#include "Game.h"
+﻿#include "Game.h"
 #include "Input.h"
 #include "CropSystem.h"
 #include "LivestockSystem.h"
@@ -429,8 +429,6 @@ bool Game::place_facility_on_current_plot(const std::string& name, std::string& 
         return false;
     }
     message = name + "을 2x2 크기로 건설했습니다. 건물 아래쪽 문 앞에서 J로 이용하세요.";
-    player_.set_position(ax + 1, ay + 2);
-    player_.set_facing('b');
     return true;
 }
 
@@ -833,7 +831,7 @@ bool Game::build_storage(Tile& tile, std::string& message) {
     }
     StorageUpgradeRule r = storage_rule_for_target(1);
     if (player_.get_level() < r.required_player_level) {
-        message = "저장소 Lv.1은 플레이어 Lv." + std::to_string(r.required_player_level) + "부터 건설할 수 있습니다.";
+        message = "저장소 레벨 1은 플레이어 레벨 " + std::to_string(r.required_player_level) + "부터 건설할 수 있습니다.";
         return false;
     }
     if (player_.get_money() < r.gold || player_.count_item(ItemType::WOOD) < r.wood ||
@@ -855,9 +853,7 @@ bool Game::build_storage(Tile& tile, std::string& message) {
     if (r.copper > 0) player_.remove_item(ItemType::COPPER, r.copper);
     player_.set_storage_level(1);
     player_.expand_inventory_slots(r.added_slots);
-    message = "저장소 Lv.1을 2x2 크기로 건설했습니다. 인벤토리 최대 용량 +" + std::to_string(r.added_slots) + "! 문 앞에서 이용하세요.";
-    player_.set_position(ax + 1, ay + 2);
-    player_.set_facing('b');
+    message = "저장소 레벨 1을 2x2 크기로 건설했습니다. 인벤토리 최대 용량 +" + std::to_string(r.added_slots) + "! 문 앞에서 이용하세요.";
     return true;
 }
 
@@ -873,7 +869,7 @@ bool Game::upgrade_storage(std::string& message) {
     }
     StorageUpgradeRule r = storage_rule_for_target(current + 1);
     if (player_.get_level() < r.required_player_level) {
-        message = "저장소 Lv." + std::to_string(r.target_level) + " 업그레이드는 플레이어 Lv." + std::to_string(r.required_player_level) + "부터 가능합니다.";
+        message = "저장소 레벨 " + std::to_string(r.target_level) + " 업그레이드는 플레이어 레벨 " + std::to_string(r.required_player_level) + "부터 가능합니다.";
         return false;
     }
     if (player_.get_money() < r.gold || player_.count_item(ItemType::WOOD) < r.wood ||
@@ -889,7 +885,7 @@ bool Game::upgrade_storage(std::string& message) {
     if (r.gold_ore > 0) player_.remove_item(ItemType::GOLD, r.gold_ore);
     player_.set_storage_level(r.target_level);
     player_.expand_inventory_slots(r.added_slots);
-    message = "저장소 Lv." + std::to_string(r.target_level) + "로 업그레이드했습니다. 인벤토리 최대 용량 +" + std::to_string(r.added_slots) + "!";
+    message = "저장소 레벨 " + std::to_string(r.target_level) + "로 업그레이드했습니다. 인벤토리 최대 용량 +" + std::to_string(r.added_slots) + "!";
     return true;
 }
 
@@ -910,6 +906,23 @@ void Game::remove_crop_from_tile(Tile& tile, std::string& message) {
     message = name + "을(를) 제거했습니다.";
 }
 
+void Game::show_tutorial() {
+    while (tutorial_.is_active()) {
+        system("clear");
+        std::cout << "[" << Tutorial::npc_name() << "] " << tutorial_.current_title() << "\n\n";
+        std::cout << tutorial_.current_dialogue() << "\n\n";
+        std::cout << "(" << (tutorial_.current_step() + 1) << "/" << tutorial_.total_steps() << ") ";
+        if (tutorial_.current_step() + 1 < tutorial_.total_steps()) {
+            std::cout << "Enter를 누르면 다음으로..." << std::flush;
+        } else {
+            std::cout << "Enter를 누르면 게임을 시작합니다!" << std::flush;
+        }
+        getch();
+        tutorial_.advance();
+    }
+    system("clear");
+    renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
+}
 
 #ifdef FARM_GUI
 
@@ -1007,88 +1020,93 @@ bool Game::choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredient
 }
 
 void Game::handle_gui_market() {
-    int mode = gui_renderer_.show_choice("상점", "거래 방식을 선택하세요.", {{1, "구매"}, {2, "판매"}, {0, "뒤로"}}, 0);
-    if (mode == 0) { renderer_.add_message("상점을 닫았습니다."); return; }
+    while (true) {
+        int mode = gui_renderer_.show_choice("상점", "거래 방식을 선택하세요.", {{1, "구매"}, {2, "판매"}, {0, "뒤로"}}, 0);
+        if (mode == 0) { renderer_.add_message("상점을 닫았습니다."); return; }
 
-    if (mode == 1) {
-        std::vector<GuiShopEntry> entries;
-        const auto& items = market_.buy_items();
-        for (std::size_t i = 0; i < items.size(); ++i) {
-            const auto& item = items[i];
-            std::ostringstream sub;
-            int price = player_.discounted_market_buy_price(item.buy_price);
-            bool trust_locked = player_.is_shop_restricted() && item.required_level > 1;
-            bool locked = player_.get_level() < item.required_level || trust_locked;
-            sub << price << "G";
-            if (price < item.buy_price) sub << " | INT 할인";
-            if (player_.get_level() < item.required_level) sub << " | Lv." << item.required_level;
-            if (trust_locked) sub << " | 신뢰도 제한";
-            entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), locked});
-        }
-        int choice = gui_renderer_.show_shop_selector("구매 상점", "인벤토리", "구매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 신뢰도가 낮으면 고급 품목이 잠깁니다.", 0);
-        if (choice <= 0) { renderer_.add_message("구매를 취소했습니다."); return; }
+        if (mode == 1) {
+            while (true) {
+                std::vector<GuiShopEntry> entries;
+                const auto& items = market_.buy_items();
+                for (std::size_t i = 0; i < items.size(); ++i) {
+                    const auto& item = items[i];
+                    std::ostringstream sub;
+                    int price = player_.discounted_market_buy_price(item.buy_price);
+                    bool trust_locked = player_.is_shop_restricted() && item.required_level > 1;
+                    bool locked = player_.get_level() < item.required_level || trust_locked;
+                    sub << price << "G";
+                    if (price < item.buy_price) sub << " | INT 할인";
+            if (player_.get_level() < item.required_level) sub << " | 레벨 " << item.required_level;
+                    if (trust_locked) sub << " | 신뢰도 제한";
+                    entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), locked});
+                }
+                int choice = gui_renderer_.show_shop_selector("구매 상점", "인벤토리", "구매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 신뢰도가 낮으면 고급 품목이 잠깁니다.", 0);
+                if (choice <= 0) { renderer_.add_message("상점을 닫았습니다."); return; }
 
-        const auto& item = items[choice - 1];
-        int price = player_.discounted_market_buy_price(item.buy_price);
-        int max_qty = price <= 0 ? 999 : player_.get_money() / price;
-        if (max_qty <= 0) {
-            std::string msg = "골드가 부족합니다.";
-            renderer_.add_message(msg);
-            gui_renderer_.show_notice("구매 실패", msg);
-            return;
-        }
+                const auto& item = items[choice - 1];
+                int price = player_.discounted_market_buy_price(item.buy_price);
+                int max_qty = price <= 0 ? 999 : player_.get_money() / price;
+                if (max_qty <= 0) {
+                    std::string msg = "골드가 부족합니다.";
+                    renderer_.add_message(msg);
+                    gui_renderer_.show_notice("구매 실패", msg);
+                    continue;
+                }
 
-        std::ostringstream qmsg;
-        qmsg << item.name << "을(를) 몇 개 구매할까요?\n"
-             << "가격: " << price << "G | 보유: " << player_.count_item(item.item) << "\n"
-             << "최대 수량: " << max_qty;
-        int qty = gui_renderer_.prompt_quantity("구매 수량", qmsg.str(), max_qty, 1);
-        if (qty <= 0) { renderer_.add_message("구매를 취소했습니다."); return; }
+                std::ostringstream qmsg;
+                qmsg << item.name << "을(를) 몇 개 구매할까요?\n"
+                     << "가격: " << price << "G | 보유: " << player_.count_item(item.item) << "\n"
+                     << "최대 수량: " << max_qty;
+                int qty = gui_renderer_.prompt_quantity("구매 수량", qmsg.str(), max_qty, 1);
+                if (qty <= 0) { renderer_.add_message("구매를 취소했습니다."); continue; }
 
-        std::string msg;
-        market_.buy_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
-        renderer_.add_message(msg);
-        gui_renderer_.show_notice("구매 결과", msg);
-        return;
-    }
-
-    if (mode == 2) {
-        std::vector<GuiShopEntry> entries;
-        const auto& items = market_.sell_items();
-        for (std::size_t i = 0; i < items.size(); ++i) {
-            const auto& item = items[i];
-            bool monster = item.item == ItemType::MONSTER_FOOD_LOW ||
-                           item.item == ItemType::MONSTER_FOOD_MID ||
-                           item.item == ItemType::MONSTER_FOOD_HIGH;
-            int price = monster ? player_.monster_food_sell_price(item.sell_price) : item.sell_price;
-            std::ostringstream sub;
-            sub << price << "G";
-            if (monster) sub << " | 성공률 " << player_.monster_food_success_chance() << "%";
-            if (player_.count_item(item.item) <= 0) sub << " | 보유 없음";
-            entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), player_.count_item(item.item) <= 0});
-        }
-        int choice = gui_renderer_.show_shop_selector("판매 상점", "인벤토리", "판매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 몬스터 푸드는 실패 시 신뢰도가 내려갈 수 있습니다.", 0);
-        if (choice <= 0) { renderer_.add_message("판매를 취소했습니다."); return; }
-
-        const auto& item = items[choice - 1];
-        int max_qty = player_.count_item(item.item);
-        if (max_qty <= 0) {
-            std::string msg = "이 아이템을 보유하고 있지 않습니다.";
-            renderer_.add_message(msg);
-            gui_renderer_.show_notice("판매 실패", msg);
-            return;
+                std::string msg;
+                market_.buy_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
+                renderer_.add_message(msg);
+                gui_renderer_.show_notice("구매 결과", msg);
+            }
         }
 
-        std::ostringstream qmsg;
-        qmsg << item.name << "을(를) 몇 개 판매할까요?\n"
-             << "기본 가격: " << item.sell_price << "G | 보유: " << max_qty;
-        int qty = gui_renderer_.prompt_quantity("판매 수량", qmsg.str(), max_qty, max_qty);
-        if (qty <= 0) { renderer_.add_message("판매를 취소했습니다."); return; }
+        if (mode == 2) {
+            while (true) {
+                std::vector<GuiShopEntry> entries;
+                const auto& items = market_.sell_items();
+                for (std::size_t i = 0; i < items.size(); ++i) {
+                    const auto& item = items[i];
+                    bool monster = item.item == ItemType::MONSTER_FOOD_LOW ||
+                                   item.item == ItemType::MONSTER_FOOD_MID ||
+                                   item.item == ItemType::MONSTER_FOOD_HIGH;
+                    int price = monster ? player_.monster_food_sell_price(item.sell_price) : item.sell_price;
+                    std::ostringstream sub;
+                    sub << price << "G";
+                    if (monster) sub << " | 성공률 " << player_.monster_food_success_chance() << "%";
+                    if (player_.count_item(item.item) <= 0) sub << " | 보유 없음";
+                    entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), player_.count_item(item.item) <= 0});
+                }
+                int choice = gui_renderer_.show_shop_selector("판매 상점", "인벤토리", "판매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 몬스터 푸드는 실패 시 신뢰도가 내려갈 수 있습니다.", 0);
+                if (choice <= 0) { renderer_.add_message("상점을 닫았습니다."); return; }
 
-        std::string msg;
-        market_.sell_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
-        renderer_.add_message(msg);
-        gui_renderer_.show_notice("판매 결과", msg);
+                const auto& item = items[choice - 1];
+                int max_qty = player_.count_item(item.item);
+                if (max_qty <= 0) {
+                    std::string msg = "이 아이템을 보유하고 있지 않습니다.";
+                    renderer_.add_message(msg);
+                    gui_renderer_.show_notice("판매 실패", msg);
+                    continue;
+                }
+
+                std::ostringstream qmsg;
+                qmsg << item.name << "을(를) 몇 개 판매할까요?\n"
+                     << "기본 가격: " << item.sell_price << "G | 보유: " << max_qty;
+                int qty = gui_renderer_.prompt_quantity("판매 수량", qmsg.str(), max_qty, max_qty);
+                if (qty <= 0) { renderer_.add_message("판매를 취소했습니다."); continue; }
+
+                std::string msg;
+                market_.sell_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
+                renderer_.add_message(msg);
+                gui_renderer_.show_notice("판매 결과", msg);
+            }
+        }
     }
 }
 
@@ -1173,19 +1191,16 @@ void Game::handle_gui_building(Tile& tile) {
     int sel = gui_renderer_.show_choice("건설 부지", "건설할 시설을 선택하세요. 축사는 시작부터 설치되어 있습니다.", {{1, "주방"}, {2, "작업장"}, {3, "저장소"}, {0, "취소"}}, 0);
     std::string msg;
     if (sel == 1) {
-        if (!gui_renderer_.confirm("주방 건설", "주방을 건설하시겠습니까?\n(비용: 없음)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         place_facility_on_current_plot("주방", msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
     }
     else if (sel == 2) {
-        if (!gui_renderer_.confirm("작업장 건설", "작업장을 건설하시겠습니까?\n(비용: 없음)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         place_facility_on_current_plot("작업장", msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
     }
     else if (sel == 3) {
-        if (!gui_renderer_.confirm("저장소 건설", "저장소를 건설하시겠습니까?\n(요구사항: 100G, 나무 5, 구리 1)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         build_storage(tile, msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
@@ -1195,114 +1210,113 @@ void Game::handle_gui_building(Tile& tile) {
 
 
 void Game::handle_gui_kitchen() {
-    std::ostringstream status;
-    status << "주방 Lv." << kitchen_.get_level()
-           << " | 골드 " << player_.get_money() << "G"
-             << " | 스태미나 " << player_.get_stamina() << "/" << player_.get_stamina_max()
-           << "\n보유: 감자 " << player_.count_item(ItemType::POTATO)
-           << ", 당근 " << player_.count_item(ItemType::CARROT)
-           << ", 달걀 " << player_.count_item(ItemType::EGG)
-           << ", 생선 " << (player_.count_item(ItemType::FISH_MACKEREL) + player_.count_item(ItemType::FISH_FLATFISH) + player_.count_item(ItemType::FISH_TUNA));
+    while (true) {
+        std::ostringstream status;
+        status << "주방 레벨 " << kitchen_.get_level()
+               << " | 골드 " << player_.get_money() << "G"
+                 << " | 스태미나 " << player_.get_stamina() << "/" << player_.get_stamina_max()
+               << "\n보유: 감자 " << player_.count_item(ItemType::POTATO)
+               << ", 당근 " << player_.count_item(ItemType::CARROT)
+               << ", 달걀 " << player_.count_item(ItemType::EGG)
+               << ", 생선 " << (player_.count_item(ItemType::FISH_MACKEREL) + player_.count_item(ItemType::FISH_FLATFISH) + player_.count_item(ItemType::FISH_TUNA));
 
-    const bool lv2_locked = kitchen_.get_level() < 2;
-    const bool lv3_locked = kitchen_.get_level() < 3;
-    const bool lv4_locked = kitchen_.get_level() < 4;
-    const bool upgrade_locked = kitchen_.get_level() >= 4;
-    std::vector<GuiActionEntry> actions{
-        {1, "감자 수프", "감자 2", "food_potato_soup", false},
-        {2, "당근 달걀 롤", "당근 2 + 달걀", "food_carrot_egg_roll", false},
-        {3, "고등어 당근 조림", "고등어 + 당근 2", "food_mackerel_carrot", false},
-        {4, "돼지고기 감자 짜글이", "Lv.2 / 돼지고기 + 감자 2", "food_pork_potato", lv2_locked},
-        {5, "감자 밀 부침개", "Lv.2 / 밀 2 + 감자 + 달걀", "food_potato_wheat_pancake", lv2_locked},
-        {6, "당근 광어 스테이크", "Lv.2 / 광어 + 당근 2", "food_carrot_flatfish", lv2_locked},
-        {7, "3색 당근 쌀밥", "Lv.3 / 쌀 2 + 당근 + 달걀", "food_3color_carrot_rice", lv3_locked},
-        {8, "감자 매쉬드 비프", "Lv.3 / 우유 + 돼지고기 + 감자 2", "food_mashed_beef", lv3_locked},
-        {9, "당근 사과 주스 만찬", "Lv.3 / 사과 2 + 당근 + 우유", "food_carrot_apple_juice", lv3_locked},
-        {10, "참치 감자 스테이크", "Lv.4 / 참치 + 감자 2 + 당근", "food_tuna_potato", lv4_locked},
-        {11, "특선 하이라이스", "Lv.4 / 쌀 2 + 당근 2 + 돼지고기 + 우유", "food_hailight_rice", lv4_locked},
-        {12, "사과 감자 무스 케이크", "Lv.4 / 사과 2 + 밀 2 + 감자 2 + 우유", "food_apple_potato_cake", lv4_locked},
-        {13, upgrade_locked ? "주방 최고 레벨" : "주방 업그레이드", upgrade_locked ? "더 이상 업그레이드할 수 없습니다." : "골드와 플레이어 레벨 필요", "kitchen", upgrade_locked},
-        {14, "하급 몬스터 푸드", "감자 + 당근 / 실패 레시피 샘플", "monster_food_low", false},
-        {15, "중급 몬스터 푸드", "밀 + 쌀 + 달걀 / 실패 레시피 샘플", "monster_food_mid", false},
-        {16, "고급 몬스터 푸드", "사과 + 우유 + 참치 + 돼지고기 + 쌀", "monster_food_high", false}
-    };
-    std::vector<GuiActionEntry> recipes = actions;
+        const bool lv2_locked = kitchen_.get_level() < 2;
+        const bool lv3_locked = kitchen_.get_level() < 3;
+        const bool lv4_locked = kitchen_.get_level() < 4;
+        const bool upgrade_locked = kitchen_.get_level() >= 4;
+        std::vector<GuiActionEntry> actions{
+            {1, "감자 수프", "감자 2", "food_potato_soup", false},
+            {2, "당근 달걀 롤", "당근 2 + 달걀", "food_carrot_egg_roll", false},
+            {3, "고등어 당근 조림", "고등어 + 당근 2", "food_mackerel_carrot", false},
+            {4, "돼지고기 감자 짜글이", "레벨 2 / 돼지고기 + 감자 2", "food_pork_potato", lv2_locked},
+            {5, "감자 밀 부침개", "레벨 2 / 밀 2 + 감자 + 달걀", "food_potato_wheat_pancake", lv2_locked},
+            {6, "당근 광어 스테이크", "레벨 2 / 광어 + 당근 2", "food_carrot_flatfish", lv2_locked},
+            {7, "3색 당근 쌀밥", "레벨 3 / 쌀 2 + 당근 + 달걀", "food_3color_carrot_rice", lv3_locked},
+            {8, "감자 매쉬드 비프", "레벨 3 / 우유 + 돼지고기 + 감자 2", "food_mashed_beef", lv3_locked},
+            {9, "당근 사과 주스 만찬", "레벨 3 / 사과 2 + 당근 + 우유", "food_carrot_apple_juice", lv3_locked},
+            {10, "참치 감자 스테이크", "레벨 4 / 참치 + 감자 2 + 당근", "food_tuna_potato", lv4_locked},
+            {11, "특선 하이라이스", "레벨 4 / 쌀 2 + 당근 2 + 돼지고기 + 우유", "food_hailight_rice", lv4_locked},
+            {12, "사과 감자 무스 케이크", "레벨 4 / 사과 2 + 밀 2 + 감자 2 + 우유", "food_apple_potato_cake", lv4_locked},
+            {13, upgrade_locked ? "주방 최고 레벨" : "주방 업그레이드", upgrade_locked ? "더 이상 업그레이드할 수 없습니다." : "골드와 플레이어 레벨 필요", "kitchen", upgrade_locked},
+            {14, "괴식 조합", "정식 레시피가 아닌 재료 2~6개 선택", "monster_food_mid", false}
+        };
+        std::vector<GuiActionEntry> recipes = actions;
 
-    int sel = gui_renderer_.show_action_panel("주방", status.str(), "레시피 / 조건", actions, recipes, 0);
-    if (sel == 0) { renderer_.add_message("주방 이용을 취소했습니다."); return; }
-    std::string msg;
-    if ((sel >= 1 && sel <= 12) || (sel >= 14 && sel <= 16)) {
-        int qty = gui_renderer_.prompt_quantity("요리 수량", "몇 개를 요리하시겠습니까?", 99, 1);
-        if (qty <= 0) { renderer_.add_message("요리를 취소했습니다."); return; }
-        int success_count = 0;
-        std::string last_msg;
-        for (int i = 0; i < qty; ++i) {
-            if (!kitchen_.perform_action(player_, sel, msg)) {
-                last_msg = msg;
-                break;
+        int sel = gui_renderer_.show_action_panel("주방", status.str(), "레시피 / 조건", actions, recipes, 0);
+        if (sel == 0) { renderer_.add_message("주방 이용을 취소했습니다."); return; }
+        std::string msg;
+        if (sel == 14) {
+            std::vector<ItemType> ingredients;
+            if (!choose_gui_monster_food_ingredients(ingredients)) {
+                renderer_.add_message("괴식 조합을 취소했습니다.");
+                continue;
             }
-            success_count++;
-            last_msg = msg;
+
+            std::string recipe_name = kitchen_.get_recipe_name(ingredients);
+            if (!recipe_name.empty()) {
+                msg = "선택한 조합은 정식 레시피(" + recipe_name + ")입니다. 괴식은 레시피와 다른 조합만 가능합니다.";
+            } else {
+                kitchen_.cook(player_, ingredients, msg);
+            }
+        } else {
+            kitchen_.perform_action(player_, sel, msg);
         }
-        if (success_count > 0 && success_count < qty) msg = std::to_string(success_count) + "개 요리 성공. " + last_msg;
-        else if (success_count > 1) msg = std::to_string(success_count) + "개 요리 성공!\n(" + last_msg + ")";
-        else msg = last_msg;
-    } else {
-        kitchen_.perform_action(player_, sel, msg);
+        sync_facility_level("주방", kitchen_.get_level());
+        renderer_.add_message(msg);
+        gui_renderer_.show_notice("주방 결과", msg);
     }
-    sync_facility_level("주방", kitchen_.get_level());
-    renderer_.add_message(msg);
-    gui_renderer_.show_notice("주방 결과", msg);
 }
 void Game::handle_gui_workshop() {
-    std::ostringstream status;
-    status << "작업장 Lv." << workshop_.get_level()
-           << " | 괭이 " << player_.get_hoe_grade()
-           << " | 낚싯대 " << player_.get_rod_grade()
-           << " | 곡괭이 " << player_.get_pick_grade()
-           << " | 플레이어 Lv." << player_.get_level()
-           << "\n보유: 나무 " << player_.count_item(ItemType::WOOD)
-           << ", 구리 " << player_.count_item(ItemType::COPPER)
-           << ", 철 " << player_.count_item(ItemType::IRON)
-           << ", 금 " << player_.count_item(ItemType::GOLD)
-           << ", 골드 " << player_.get_money() << "G";
+    while (true) {
+        std::ostringstream status;
+        status << "작업장 레벨 " << workshop_.get_level()
+               << " | 괭이 " << player_.get_hoe_grade()
+               << " | 낚싯대 " << player_.get_rod_grade()
+               << " | 곡괭이 " << player_.get_pick_grade()
+               << " | 플레이어 레벨 " << player_.get_level()
+               << "\n보유: 나무 " << player_.count_item(ItemType::WOOD)
+               << ", 구리 " << player_.count_item(ItemType::COPPER)
+               << ", 철 " << player_.count_item(ItemType::IRON)
+               << ", 금 " << player_.count_item(ItemType::GOLD)
+               << ", 골드 " << player_.get_money() << "G";
 
-    int need_level = 0;
-    std::string expand_req;
-    if (workshop_.get_level() == 0) { need_level = 6; expand_req = "Lv6 / 200G / 스태미나 8"; }
-    else if (workshop_.get_level() == 1) { need_level = 10; expand_req = "Lv10 / 600G / 스태미나 15"; }
-    else if (workshop_.get_level() == 2) { need_level = 15; expand_req = "Lv15 / 1200G / 스태미나 20"; }
-    else { need_level = 999; expand_req = "최고 레벨"; }
+        int need_level = 0;
+        std::string expand_req;
+        if (workshop_.get_level() == 0) { need_level = 6; expand_req = "Lv6 / 200G / 스태미나 8"; }
+        else if (workshop_.get_level() == 1) { need_level = 10; expand_req = "Lv10 / 600G / 스태미나 15"; }
+        else if (workshop_.get_level() == 2) { need_level = 15; expand_req = "Lv15 / 1200G / 스태미나 20"; }
+        else { need_level = 999; expand_req = "최고 레벨"; }
 
-    const bool expand_locked = workshop_.get_level() >= 3 || player_.get_level() < need_level;
-    std::vector<GuiActionEntry> actions{
-        {1, workshop_.get_level() >= 3 ? "작업장 최고 레벨" : "작업장 증축", expand_req, "workshop", expand_locked},
-        {2, "구리 괭이", "작업장 Lv.1 / 100G / 나무8 / 구리4", "copper", workshop_.get_level() < 1 || player_.get_hoe_grade() >= 1},
-        {3, "철 괭이", "작업장 Lv.2 / 300G / 나무15 / 철5", "iron", workshop_.get_level() < 2 || player_.get_hoe_grade() >= 2},
-        {4, "금 괭이", "작업장 Lv.3 / 1000G / 나무30 / 금5", "gold", workshop_.get_level() < 3 || player_.get_hoe_grade() >= 3},
-        {5, "구리 낚싯대", "작업장 Lv.1 / 100G / 나무12 / 구리2", "copper", workshop_.get_level() < 1 || player_.get_rod_grade() >= 1},
-        {6, "철 낚싯대", "작업장 Lv.2 / 300G / 나무25 / 철3", "iron", workshop_.get_level() < 2 || player_.get_rod_grade() >= 2},
-        {7, "금 낚싯대", "작업장 Lv.3 / 1000G / 나무50 / 금2", "gold", workshop_.get_level() < 3 || player_.get_rod_grade() >= 3},
-        {8, "구리 곡괭이", "작업장 Lv.1 / 100G / 나무10 / 구리3", "copper", workshop_.get_level() < 1 || player_.get_pick_grade() >= 1},
-        {9, "철 곡괭이", "작업장 Lv.2 / 300G / 나무30 / 철4", "iron", workshop_.get_level() < 2 || player_.get_pick_grade() >= 2},
-        {10, "금 곡괭이", "작업장 Lv.3 / 1000G / 나무40 / 금3", "gold", workshop_.get_level() < 3 || player_.get_pick_grade() >= 3}
-    };
-    std::vector<GuiActionEntry> recipes = actions;
+        const bool expand_locked = workshop_.get_level() >= 3 || player_.get_level() < need_level;
+        std::vector<GuiActionEntry> actions{
+            {1, workshop_.get_level() >= 3 ? "작업장 최고 레벨" : "작업장 증축", expand_req, "workshop", expand_locked},
+            {2, "구리 괭이", "작업장 레벨 1 / 100G / 나무8 / 구리4", "copper", workshop_.get_level() < 1 || player_.get_hoe_grade() >= 1},
+            {3, "철 괭이", "작업장 레벨 2 / 300G / 나무15 / 철5", "iron", workshop_.get_level() < 2 || player_.get_hoe_grade() >= 2},
+            {4, "금 괭이", "작업장 레벨 3 / 1000G / 나무30 / 금5", "gold", workshop_.get_level() < 3 || player_.get_hoe_grade() >= 3},
+            {5, "구리 낚싯대", "작업장 레벨 1 / 100G / 나무12 / 구리2", "copper", workshop_.get_level() < 1 || player_.get_rod_grade() >= 1},
+            {6, "철 낚싯대", "작업장 레벨 2 / 300G / 나무25 / 철3", "iron", workshop_.get_level() < 2 || player_.get_rod_grade() >= 2},
+            {7, "금 낚싯대", "작업장 레벨 3 / 1000G / 나무50 / 금2", "gold", workshop_.get_level() < 3 || player_.get_rod_grade() >= 3},
+            {8, "구리 곡괭이", "작업장 레벨 1 / 100G / 나무10 / 구리3", "copper", workshop_.get_level() < 1 || player_.get_pick_grade() >= 1},
+            {9, "철 곡괭이", "작업장 레벨 2 / 300G / 나무30 / 철4", "iron", workshop_.get_level() < 2 || player_.get_pick_grade() >= 2},
+            {10, "금 곡괭이", "작업장 레벨 3 / 1000G / 나무40 / 금3", "gold", workshop_.get_level() < 3 || player_.get_pick_grade() >= 3}
+        };
+        std::vector<GuiActionEntry> recipes = actions;
 
-    int sel = gui_renderer_.show_action_panel("작업장", status.str(), "제작식 / 조건", actions, recipes, 0);
-    if (sel == 0) { renderer_.add_message("작업장 이용을 취소했습니다."); return; }
-    std::string msg;
-    workshop_.perform_action(player_, sel, msg);
-    sync_facility_level("작업장", workshop_.get_level());
-    renderer_.add_message(msg);
-    gui_renderer_.show_notice("작업장 결과", msg);
+        int sel = gui_renderer_.show_action_panel("작업장", status.str(), "제작식 / 조건", actions, recipes, 0);
+        if (sel == 0) { renderer_.add_message("작업장 이용을 취소했습니다."); return; }
+        std::string msg;
+        workshop_.perform_action(player_, sel, msg);
+        sync_facility_level("작업장", workshop_.get_level());
+        renderer_.add_message(msg);
+        gui_renderer_.show_notice("작업장 결과", msg);
+    }
 }
 void Game::handle_gui_storage() {
     int current = player_.get_storage_level();
     std::ostringstream status;
-    status << "저장소 Lv." << current
+    status << "저장소 레벨 " << current
            << " | 인벤토리 " << player_.inventory().used_slots() << "/" << player_.inventory().max_slots()
-           << " | 플레이어 Lv." << player_.get_level()
+           << " | 플레이어 레벨 " << player_.get_level()
            << "\n보유: 나무 " << player_.count_item(ItemType::WOOD)
            << ", 구리 " << player_.count_item(ItemType::COPPER)
            << ", 철 " << player_.count_item(ItemType::IRON)
@@ -1316,9 +1330,9 @@ void Game::handle_gui_storage() {
         {1, maxed ? "저장소 최고 레벨" : "저장소 업그레이드", maxed ? "더 이상 확장할 수 없습니다." : storage_rule_text(next), "storage", locked}
     };
     std::vector<GuiActionEntry> recipes{
-        {1, "Lv.1 저장소", storage_rule_text(storage_rule_for_target(1)), "storage", current >= 1},
-        {2, "Lv.2 저장소", storage_rule_text(storage_rule_for_target(2)), "storage", current >= 2 || player_.get_level() < 8},
-        {3, "Lv.3 저장소", storage_rule_text(storage_rule_for_target(3)), "storage", current >= 3 || player_.get_level() < 16}
+        {1, "레벨 1 저장소", storage_rule_text(storage_rule_for_target(1)), "storage", current >= 1},
+        {2, "레벨 2 저장소", storage_rule_text(storage_rule_for_target(2)), "storage", current >= 2 || player_.get_level() < 8},
+        {3, "레벨 3 저장소", storage_rule_text(storage_rule_for_target(3)), "storage", current >= 3 || player_.get_level() < 16}
     };
     int sel = gui_renderer_.show_action_panel("저장소", status.str(), "확장 조건", actions, recipes, 0);
     if (sel == 0) { renderer_.add_message("저장소 이용을 취소했습니다."); return; }
@@ -1423,28 +1437,6 @@ void Game::show_gui_skill_tree() {
     gui_renderer_.show_notice("스킬 결과", msg);
 }
 
-#endif
-
-
-void Game::show_tutorial() {
-    while (tutorial_.is_active()) {
-        system("clear");
-        std::cout << "[" << Tutorial::npc_name() << "] " << tutorial_.current_title() << "\n\n";
-        std::cout << tutorial_.current_dialogue() << "\n\n";
-        std::cout << "(" << (tutorial_.current_step() + 1) << "/" << tutorial_.total_steps() << ") ";
-        if (tutorial_.current_step() + 1 < tutorial_.total_steps()) {
-            std::cout << "Enter를 누르면 다음으로..." << std::flush;
-        } else {
-            std::cout << "Enter를 누르면 게임을 시작합니다!" << std::flush;
-        }
-        getch();
-        tutorial_.advance();
-    }
-    system("clear");
-    renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
-}
-
-#ifdef FARM_GUI
 void Game::show_gui_tutorial() {
     gui_renderer_.run_tutorial(player_, map_, tutorial_);
     renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");

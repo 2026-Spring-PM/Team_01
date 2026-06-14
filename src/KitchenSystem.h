@@ -25,7 +25,7 @@ public:
     std::string get_recipe_name(std::vector<ItemType> inputs);
     static int recipe_count();
     int get_level() const { return level_; }
-    bool perform_action(Player& player, int sel, std::string& message);
+    void perform_action(Player& player, int sel, std::string& message);
 
 private:
     int level_;

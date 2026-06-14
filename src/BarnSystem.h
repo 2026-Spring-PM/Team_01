@@ -1,11 +1,12 @@
 #pragma once
 
+#include "GameObject.h"
 #include "Player.h"
 #include "Tile.h"
 #include <string>
 #include <vector>
 
-struct BarnAnimal {
+struct BarnAnimal : public GameObject {
     // x/y are logical target tile coordinates. visual_x/visual_y are used for smooth GUI movement.
     int x = 0;
     int y = 0;
@@ -13,6 +14,11 @@ struct BarnAnimal {
     double visual_y = 0.0;
     char facing = 'd'; // f: front/down, b: back/up, l, r
     Tile tile;
+
+    void update() override;
+    Position get_position() const override { return Position{x, y}; }
+    void set_position(const Position& position) override;
+    std::string debug_name() const override;
 };
 
 class BarnSystem {
