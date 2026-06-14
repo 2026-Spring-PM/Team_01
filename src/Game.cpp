@@ -46,21 +46,45 @@ void Game::run() {
     gui_mode_ = gui_renderer_.initialize();
     if (gui_mode_) {
         renderer_.add_message("GUI 모드가 시작되었습니다. WASD 이동, J/Enter/Space 상호작용.");
-        show_gui_tutorial();
+        if (tutorial_.is_active()) {
+            show_gui_tutorial();
+        }
+        bool needs_redraw = true;
+        Uint32 last_gui_frame_ticks = 0;
+        Uint32 last_barn_frame_ticks = 0;
         while (is_running_) {
-            sync_gui_event_status();
-            if (current_area_ == GameArea::BARN) {
-                barn_.update_random_movement(player_);
-                gui_renderer_.draw_barn(player_, barn_, renderer_.last_message());
-            } else {
-                gui_renderer_.draw(player_, map_, renderer_.last_message());
-            }
             char input = 0;
             if (gui_renderer_.poll_input(input)) {
                 handle_input(input);
                 check_game_end();
+                needs_redraw = true;
             }
-            SDL_Delay(16);
+
+            const Uint32 now = SDL_GetTicks();
+            const bool animate_player = gui_renderer_.needs_animation_frame(player_);
+            const bool animate_barn = current_area_ == GameArea::BARN && now - last_barn_frame_ticks >= 33;
+            const bool frame_due = now - last_gui_frame_ticks >= 33;
+
+            if (!needs_redraw && !animate_player && !animate_barn) {
+                SDL_Delay(8);
+                continue;
+            }
+            if (!needs_redraw && !frame_due) {
+                SDL_Delay(8);
+                continue;
+            }
+
+            sync_gui_event_status();
+            if (current_area_ == GameArea::BARN) {
+                barn_.update_random_movement(player_);
+                gui_renderer_.draw_barn(player_, barn_, renderer_.last_message());
+                last_barn_frame_ticks = now;
+            } else {
+                gui_renderer_.draw(player_, map_, renderer_.last_message());
+            }
+            last_gui_frame_ticks = now;
+            needs_redraw = false;
+            SDL_Delay(8);
         }
         return;
     }
@@ -774,7 +798,7 @@ StorageUpgradeRule storage_rule_for_target(int target_level) {
 
 std::string storage_rule_text(const StorageUpgradeRule& r) {
     std::ostringstream oss;
-    oss << "Lv." << r.required_player_level << " / " << r.gold << "G / 나무 " << r.wood;
+    oss << "플레이어 레벨 " << r.required_player_level << " / " << r.gold << "G / 나무 " << r.wood;
     if (r.copper > 0) oss << " / 구리 " << r.copper;
     if (r.iron > 0) oss << " / 철 " << r.iron;
     if (r.gold_ore > 0) oss << " / 금 " << r.gold_ore;
@@ -888,6 +912,99 @@ void Game::remove_crop_from_tile(Tile& tile, std::string& message) {
 
 
 #ifdef FARM_GUI
+
+bool Game::choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredients) {
+    struct MonsterIngredientOption {
+        ItemType item;
+        const char* name;
+        const char* icon;
+        int rarity;
+    };
+
+    static const MonsterIngredientOption options[] = {
+        {ItemType::POTATO, "감자", "item_potato", 1},
+        {ItemType::CARROT, "당근", "item_carrot", 1},
+        {ItemType::EGG, "달걀", "egg", 1},
+        {ItemType::FISH_MACKEREL, "고등어", "fish_mackerel", 1},
+        {ItemType::WHEAT, "밀", "item_wheat", 2},
+        {ItemType::RICE, "쌀", "item_rice", 2},
+        {ItemType::PORK, "돼지고기", "pork", 2},
+        {ItemType::FISH_FLATFISH, "광어", "fish_flatfish", 2},
+        {ItemType::APPLE, "사과", "item_apple", 3},
+        {ItemType::MILK, "우유", "milk", 3},
+        {ItemType::FISH_TUNA, "참치", "fish_tuna", 3},
+    };
+
+    auto selected_count = [&](ItemType item) {
+        int count = 0;
+        for (ItemType selected : ingredients) {
+            if (selected == item) ++count;
+        }
+        return count;
+    };
+
+    while (true) {
+        int rarity_sum = 0;
+        std::ostringstream body;
+        body << "괴식은 정식 레시피가 아닌 재료 2~6개로 만듭니다.\n";
+        body << "선택한 재료 (" << ingredients.size() << "/6): ";
+        if (ingredients.empty()) body << "없음";
+        for (ItemType item : ingredients) {
+            body << item_name(item) << " ";
+            for (const auto& option : options) {
+                if (option.item == item) {
+                    rarity_sum += option.rarity;
+                    break;
+                }
+            }
+        }
+
+        std::string grade = "하급";
+        if (rarity_sum > 10) grade = "고급";
+        else if (rarity_sum > 5) grade = "중급";
+        body << "\n희귀도 합: " << rarity_sum;
+        if (ingredients.size() >= 2) body << " / 예상 결과: " << grade << " 몬스터 푸드";
+        else body << " / 재료를 최소 2개 선택하세요.";
+
+        std::vector<GuiActionEntry> actions;
+        int id = 1;
+        if (ingredients.size() < 6) {
+            for (const auto& option : options) {
+                int owned = player_.count_item(option.item);
+                int chosen = selected_count(option.item);
+                if (owned <= chosen) continue;
+                std::ostringstream label;
+                label << "희귀도 " << option.rarity << " / 남은 수량 " << (owned - chosen) << "개";
+                actions.push_back({id, option.name, label.str(), option.icon, false});
+                ++id;
+            }
+        }
+        if (ingredients.size() >= 2) actions.push_back({100, "제작 시작", "선택한 재료로 괴식을 만듭니다.", "kitchen", false});
+        if (!ingredients.empty()) actions.push_back({99, "선택 초기화", "선택한 재료를 모두 비웁니다.", "kitchen", false});
+        actions.push_back({0, "취소", "주방으로 돌아갑니다.", "kitchen", false});
+
+        std::vector<GuiActionEntry> recipes = actions;
+        int choice = gui_renderer_.show_action_panel("괴식 조합", body.str(), "선택 가능 재료", actions, recipes, 0);
+        if (choice == 0) return false;
+        if (choice == 100) return true;
+        if (choice == 99) {
+            ingredients.clear();
+            continue;
+        }
+
+        int current_id = 1;
+        for (const auto& option : options) {
+            int owned = player_.count_item(option.item);
+            int chosen = selected_count(option.item);
+            if (owned <= chosen) continue;
+            if (choice == current_id) {
+                ingredients.push_back(option.item);
+                break;
+            }
+            ++current_id;
+        }
+    }
+}
 
 void Game::handle_gui_market() {
     int mode = gui_renderer_.show_choice("상점", "거래 방식을 선택하세요.", {{1, "구매"}, {2, "판매"}, {0, "뒤로"}}, 0);
@@ -1327,9 +1444,12 @@ void Game::show_tutorial() {
     renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
 }
 
-#ifdef FARM_GUI
 void Game::show_gui_tutorial() {
     gui_renderer_.run_tutorial(player_, map_, tutorial_);
     renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
 }
 #endif
+
+
+
+

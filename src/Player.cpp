@@ -9,10 +9,6 @@ int clamp_grade(int grade) {
 }
 }
 
-void Player::update() {
-    // 매 턴 또는 프레임 단위로 실행될 플레이어의 로직
-}
-
 Player::Player()
     : x_(Map::BED_X),
       y_(Map::BED_Y),
