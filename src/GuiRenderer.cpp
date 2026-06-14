@@ -165,7 +165,8 @@ bool GuiRenderer::initialize() {
         {"barn_hay_pile", "barn_hay_pile.png"}, {"barn_hay_low", "barn_hay_low.png"},
         {"barn_barrel", "barn_barrel.png"}, {"barn_sack", "barn_sack.png"},
         {"barn_crate", "barn_crate.png"}, {"barn_bucket", "barn_bucket.png"},
-        {"barn_wall_panel", "barn_wall_panel.png"}
+        {"barn_wall_panel", "barn_wall_panel.png"},
+        {"npc_seed", "npc_seed.png"}
     };
 
     for (const auto& e : entries) {
@@ -290,7 +291,7 @@ int GuiRenderer::show_choice(const std::string& title,
         draw_text(title, panel_x + margin, panel_y + 22, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
         int y = panel_y + 68;
         for (const auto& line : wrap_text(message, 48)) {
-            draw_text(line, panel_x + margin, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
+            draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             y += 24;
             if (y > panel_y + 220) break;
         }
@@ -575,18 +576,25 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
 
         std::ostringstream header;
         header << Tutorial::npc_name() << " - " << tutorial.current_title();
-        draw_text(header.str(), panel_x + margin, panel_y + 28, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
+        draw_text(header.str(), panel_x + margin + 180, panel_y + 28, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2 - 180);
+
+        if (texture("npc_seed")) {
+            SDL_Rect npc_rect{panel_x + 36, panel_y + 40, 136, 170}; 
+            fill_rect(npc_rect.x, npc_rect.y, npc_rect.w, npc_rect.h, SDL_Color{30, 22, 16, 200});
+            draw_rect_outline(npc_rect.x, npc_rect.y, npc_rect.w, npc_rect.h, SDL_Color{148, 103, 49, 255});
+            draw_texture("npc_seed", npc_rect);
+        }
 
         int y = panel_y + 86;
         for (const auto& line : wrap_text(tutorial.current_dialogue(), 48)) {
-            draw_text(line, panel_x + margin, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
+            draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             y += 24;
             if (y > panel_y + panel_h - 116) break;
         }
 
         std::ostringstream progress;
         progress << (tutorial.current_step() + 1) << " / " << tutorial.total_steps();
-        draw_text(progress.str(), panel_x + margin, panel_y + panel_h - 116, SDL_Color{214, 200, 170, 255}, panel_w - margin * 2);
+        draw_text(progress.str(), panel_x + margin + 180, panel_y + panel_h - 116, SDL_Color{214, 200, 170, 255}, panel_w - margin * 2);
 
         fill_rect(skip_rect.x, skip_rect.y, skip_rect.w, skip_rect.h, SDL_Color{92, 70, 62, 255});
         draw_rect_outline(skip_rect.x, skip_rect.y, skip_rect.w, skip_rect.h, SDL_Color{232, 190, 95, 255});

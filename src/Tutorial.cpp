@@ -5,7 +5,7 @@ Tutorial::Tutorial() {
 }
 
 const char* Tutorial::npc_name() {
-    return "마을 할아버지";
+    return "씨앗 할머니";
 }
 
 int Tutorial::total_steps() const {
