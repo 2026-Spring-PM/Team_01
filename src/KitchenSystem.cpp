@@ -218,7 +218,7 @@ bool KitchenSystem::perform_action(Player& player, int sel, std::string& message
         return cook(player, {ItemType::POTATO, ItemType::CARROT}, message);
     }
     if (sel == 15) {
-        return cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::EGG}, message);
+        return cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::PORK}, message);
     }
     if (sel == 16) {
         return cook(player, {ItemType::APPLE, ItemType::MILK, ItemType::FISH_TUNA, ItemType::PORK, ItemType::RICE}, message);
