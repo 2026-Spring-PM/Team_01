@@ -4,11 +4,15 @@
 #include "Inventory.h"
 #include "ItemType.h"
 #include "LevelSystem.h"
+#include "GameObject.h"
+#include "Position.h"
 
 #include <string>
 
-class Player {
+class Player : public GameObject {
 public:
+    void update() override;
+    Position get_pos() const { return Position(x_, y_); }
     static constexpr int INITIAL_MONEY = 50;
     static constexpr int INITIAL_INVENTORY_SLOTS = 40;
 
