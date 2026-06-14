@@ -1444,6 +1444,7 @@ void Game::show_tutorial() {
     renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
 }
 
+#ifdef FARM_GUI
 void Game::show_gui_tutorial() {
     gui_renderer_.run_tutorial(player_, map_, tutorial_);
     renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");

@@ -609,19 +609,14 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
             }
             if (event.type == SDL_KEYDOWN) {
                 SDL_Keycode key = event.key.keysym.sym;
+                SDL_Scancode sc = event.key.keysym.scancode;
                 if (key == SDLK_ESCAPE) {
                     while (tutorial.is_active()) tutorial.advance();
                     return;
                 }
-                if (event.type == SDL_KEYDOWN) {
-                    SDL_Keycode key = event.key.keysym.sym;
-                    SDL_Scancode sc = event.key.keysym.scancode;
-                    if (key == SDLK_RETURN || sc == SDL_SCANCODE_RETURN || sc == SDL_SCANCODE_SPACE || key == SDLK_ESCAPE || sc == SDL_SCANCODE_ESCAPE || sc == SDL_SCANCODE_KP_ENTER) {
-                        next_step = true;
-                    }
-                }
-                if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-                    next_step = true;
+                if (key == SDLK_RETURN || sc == SDL_SCANCODE_RETURN || sc == SDL_SCANCODE_SPACE || sc == SDL_SCANCODE_KP_ENTER) {
+                    tutorial.advance();
+                    break;
                 }
             }
             if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
@@ -867,7 +862,8 @@ int GuiRenderer::show_action_panel(const std::string& title,
     int selected = 0;
     int scroll_offset = 0;
 
-    auto keep_selected_visible = [&]() {
+    /* unused */
+    auto keep_selected_visible_real = [&]() {
         if (actions.empty()) {
             selected = 0;
             scroll_offset = 0;
