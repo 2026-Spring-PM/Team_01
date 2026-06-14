@@ -669,8 +669,8 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
                 draw_texture("npc_seed", npc_rect);
             }
             
-            draw_text(title, panel_x + 200, panel_y + 16, SDL_Color{255, 221, 132, 255}, panel_w - 230);
-            int y = panel_y + 52;
+            draw_text(title, panel_x + 200, panel_y + 12, SDL_Color{255, 221, 132, 255}, panel_w - 230);
+            int y = panel_y + 40;
             for (const auto& line : wrap_text(body, 42)) {
                 draw_text(line, panel_x + 200, y, SDL_Color{238, 230, 207, 255}, panel_w - 230);
                 y += 24;
