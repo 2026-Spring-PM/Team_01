@@ -9,7 +9,7 @@
 
 class Player {
 public:
-    static constexpr int INITIAL_MONEY = 25;
+    static constexpr int INITIAL_MONEY = 50;
     static constexpr int INITIAL_INVENTORY_SLOTS = 40;
 
     Player();
@@ -35,10 +35,11 @@ public:
 
     int get_x() const { return x_; }
     int get_y() const { return y_; }
+    void set_position(int x, int y);
     int get_money() const { return money_; }
     int get_stamina() const { return stamina_; }
-    int get_stamina_max() const { return stamina_limit_ > 0 ? stamina_limit_ : level_system_.get_max_stamina(); }
-    int get_true_stamina_max() const { return level_system_.get_max_stamina(); }
+    int get_stamina_max() const { return stamina_limit_ > 0 ? stamina_limit_ : get_true_stamina_max(); }
+    int get_true_stamina_max() const;
     int get_day() const { return day_; }
     int get_level() const { return level_system_.get_level(); }
     int get_exp() const { return level_system_.get_exp(); }
@@ -46,48 +47,87 @@ public:
     int get_storage_level() const { return storage_level_; }
     void set_storage_level(int level);
 
-    int get_tool_grade() const { return tool_grade_; }
-    char get_facing() const { return facing_; } // f/front, b/back, l/left, r/right
-    void set_tool_grade(int grade);
-    int get_harvest_stamina_cost() const;
+    int get_tool_grade() const { return hoe_grade_; }
     int get_hoe_grade() const { return hoe_grade_; }
-    void set_hoe_grade(int grade) { hoe_grade_ = grade; }
+    int get_rod_grade() const { return rod_grade_; }
+    int get_pick_grade() const { return pick_grade_; }
+    void set_tool_grade(int grade) { set_hoe_grade(grade); }
+    void set_hoe_grade(int grade);
+    void set_rod_grade(int grade);
+    void set_pick_grade(int grade);
 
-    int get_fishing_rod_grade() const { return fishing_rod_grade_; }
-    void set_fishing_rod_grade(int grade) { fishing_rod_grade_ = grade; }
+    char get_facing() const { return facing_; }
+    void set_facing(char facing) { facing_ = facing; }
+    int get_harvest_stamina_cost() const;
+    int get_fishing_stamina_cost() const;
+    int get_mining_stamina_cost() const;
 
-    int get_pickaxe_grade() const { return pickaxe_grade_; }
-    void set_pickaxe_grade(int grade) { pickaxe_grade_ = grade; }
+    int get_skill_points() const { return skill_points_; }
+    bool invest_str_node(int node_id, std::string& message);
+    bool invest_int_node(int node_id, std::string& message);
+    bool invest_luk_node(int node_id, std::string& message);
+    bool has_str_node(int node_id) const;
+    bool has_int_node(int node_id) const;
+    bool has_luk_node(int node_id) const;
 
-    // 추후 요리/장비 등으로 올라갈 스탯 (현재는 기본 0)
-    int get_luk() const { return luk_; }
-    int get_str() const { return str_; }
     void apply_cold_penalty();
     void recover_daily_status();
     bool is_sick_today() const { return sick_today_; }
     const std::string& get_levelup_message() const { return levelup_message_; }
     void clear_levelup_message() { levelup_message_.clear(); }
+
+    bool is_starry_night() const { return starry_night_days_ > 0; }
+    void activate_starry_night(int days) { starry_night_days_ = days; }
+    void tick_starry_night() { if (starry_night_days_ > 0) --starry_night_days_; }
+
+    bool is_wildlife_today() const { return wildlife_today_; }
+    void set_wildlife_today(bool value) { wildlife_today_ = value; }
+
+    bool has_sold_monster_food() const { return sold_monster_food_; }
+    void set_sold_monster_food(bool sold) { sold_monster_food_ = sold; }
+    int get_shop_trust() const { return shop_trust_; }
+    void lower_shop_trust(int amount);
+    void restore_shop_trust(int amount);
+    bool is_shop_restricted() const { return shop_trust_ <= 30; }
+    void record_sale_income(int amount);
+    std::string start_new_day_economy();
+    int discounted_upgrade_cost(int base_cost) const;
+    int discounted_market_buy_price(int base_price) const;
+    int monster_food_sell_price(int base_price) const;
+    int monster_food_success_chance() const;
+    bool protects_monster_food_failure() const;
+    bool should_refund_seed() const;
+    bool should_skip_harvest_stamina() const;
+    bool should_double_livestock_product() const;
+    bool should_save_cooking_ingredient() const;
+    bool should_trigger_starry_night() const;
+
 private:
-    int hoe_grade_ = 0;
-    int fishing_rod_grade_ = 0;
-    int pickaxe_grade_ = 0;
-    
-    int luk_ = 0;
-    int str_ = 0;
     int x_;
     int y_;
     int money_;
     int stamina_;
     int day_;
-    int tool_grade_;       // 0 기본, 1 구리, 2 철, 3 금
-    int storage_level_;     // 0 없음, 1~3 저장소 레벨
-    char facing_;          // GUI용 바라보는 방향: f/b/l/r
-    int stamina_limit_;    // 0이면 제한 없음, 감기 이벤트 때 임시 제한
+    int hoe_grade_;
+    int rod_grade_;
+    int pick_grade_;
+    int storage_level_;
+    char facing_;
+    int stamina_limit_;
     bool sick_today_;
+    bool wildlife_today_;
+    int starry_night_days_;
+    int skill_points_;
+    bool str_nodes_[7];
+    bool int_nodes_[9];
+    bool luk_nodes_[7];
+    bool sold_monster_food_;
+    int shop_trust_;
+    int daily_sales_income_;
+    int pending_dividend_;
     std::string levelup_message_;
 
     LevelSystem level_system_;
     Inventory<ItemType> inventory_;
     std::string name_;
-
 };

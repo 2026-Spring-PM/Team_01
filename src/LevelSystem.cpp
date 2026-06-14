@@ -9,11 +9,18 @@ bool LevelSystem::add_exp(int exp) {
     exp_ += exp;
     bool leveled_up = false;
 
-    while (level_ < MAX_LEVEL && exp_ >= required_exp_for_level(level_ + 1)) {
-        ++level_;
-        on_level_up();
-        leveled_up = true;
+    while (level_ < MAX_LEVEL) {
+        int needed = required_exp_for_level(level_ + 1);
+        if (exp_ >= needed) {
+            exp_ -= needed;   // ← 차감!
+            ++level_;
+            on_level_up();
+            leveled_up = true;
+        } else {
+            break;
+        }
     }
+
     return leveled_up;
 }
 
@@ -22,25 +29,42 @@ int LevelSystem::get_exp_to_next_level() const {
     return required_exp_for_level(level_ + 1) - exp_;
 }
 
+// 경험치 테이블 (PDF 기준, 1/10 스케일)
+// Lv1-4: level*5
+// Lv5: 30
+// Lv6: 50
+// Lv7-9: level*10
+// Lv10: 150
+// Lv11-15: 200
+// Lv16: 400
+// Lv17-19: 500
+// Lv20: 1000
+// Lv21-29: 1500
+// Lv30: 3000
 int LevelSystem::required_exp_for_level(int target_level) {
-if (target_level <= 1) return 0;
-    if (target_level <= 4) return target_level * 5;
-    if (target_level == 5) return 30;
-    if (target_level == 6) return 50;
-    if (target_level >= 7 && target_level <= 9) return target_level * 10;
-    if (target_level == 10) return 150;
-    if (target_level >= 11 && target_level <= 15) return 200;
-    if (target_level == 16) return 400;
-    if (target_level >= 17 && target_level <= 19) return 500;
-    if (target_level == 20) return 1000;
-    if (target_level >= 21 && target_level <= 29) return 1500;
-    return 30000; // 30 이상
+    if (target_level <= 1) return 0;
+    if (target_level <= 4) return target_level * 20; // Lv2: 40, Lv3: 60, Lv4: 80
+    if (target_level == 5) return 100;
+    if (target_level == 6) return 150;
+    if (target_level <= 9) return target_level * 30; // Lv7: 210, Lv8: 240, Lv9: 270
+    if (target_level == 10) return 400;
+    if (target_level <= 15) return 600;
+    if (target_level == 16) return 1000;
+    if (target_level <= 19) return 1200;
+    if (target_level == 20) return 2000;
+    if (target_level <= 29) return 3000;
+    return 6000; // Lv30
+}
+
+bool LevelSystem::is_bonus_level(int level) {
+    return level == 6 || level == 10 || level == 16 ||
+           level == 20 || level == 26 || level == 30;
 }
 
 void LevelSystem::on_level_up() {
-    max_stamina_ += 1; // 기본 +1
-    // 특정 레벨에서 보너스 +2 (합쳐서 +3이 되도록 하려면 += 2로, 기획상 총 +2가 되도록 하려면 += 1로 합니다. 기획안의 "보너스 +2"를 추가로 해석하여 +2 반영)
-    if (level_ == 6 || level_ == 10 || level_ == 16 || level_ == 20 || level_ == 26 || level_ == 30) {
-        max_stamina_ += 2;
+    // 기본 +1, 보너스 레벨에서 추가 +1
+    max_stamina_ += 1;
+    if (is_bonus_level(level_)) {
+        max_stamina_ += 1;
     }
 }

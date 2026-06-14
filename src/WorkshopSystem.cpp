@@ -1,7 +1,37 @@
 #include "WorkshopSystem.h"
+
 #include "Input.h"
 #include "ItemType.h"
+
 #include <iostream>
+
+namespace {
+const ToolRecipe TOOL_RECIPES[] = {
+    {1, 1, 1, "구리 괭이", 4, 0, 0, 8, 100, "수확 스태미나 5 -> 4"},
+    {2, 1, 2, "철 괭이", 0, 5, 0, 15, 300, "수확 스태미나 4 -> 3"},
+    {3, 1, 3, "금 괭이", 0, 0, 5, 30, 1000, "수확 스태미나 3 -> 2"},
+    {1, 2, 1, "구리 낚싯대", 2, 0, 0, 12, 100, "낚시 Perfect 보상 해금"},
+    {2, 2, 2, "철 낚싯대", 0, 3, 0, 25, 300, "낚시 Great 보상 강화"},
+    {3, 2, 3, "금 낚싯대", 0, 0, 2, 50, 1000, "낚시 스태미나 5 -> 3"},
+    {1, 3, 1, "구리 곡괭이", 3, 0, 0, 10, 100, "누적 압력 대사 힌트"},
+    {2, 3, 2, "철 곡괭이", 0, 4, 0, 30, 300, "누적 압력 범위 표시"},
+    {3, 3, 3, "금 곡괭이", 0, 0, 3, 40, 1000, "광산 스태미나 5 -> 3, 압력 상승 1~10"},
+};
+
+constexpr int TOOL_COUNT = static_cast<int>(sizeof(TOOL_RECIPES) / sizeof(TOOL_RECIPES[0]));
+
+int current_grade_for(const Player& player, int tool_type) {
+    if (tool_type == 1) return player.get_hoe_grade();
+    if (tool_type == 2) return player.get_rod_grade();
+    return player.get_pick_grade();
+}
+
+void set_grade_for(Player& player, int tool_type, int grade) {
+    if (tool_type == 1) player.set_hoe_grade(grade);
+    else if (tool_type == 2) player.set_rod_grade(grade);
+    else player.set_pick_grade(grade);
+}
+}
 
 WorkshopSystem::WorkshopSystem() : level_(0) {}
 
@@ -9,101 +39,105 @@ void WorkshopSystem::interact(Player& player) {
     show_menu(player);
 }
 
-// 기존 perform_action은 메뉴 로직 안으로 통합되어 더 이상 쓰이지 않지만, 
-// Game.cpp 호환성을 위해 껍데기만 남겨둡니다.
 bool WorkshopSystem::perform_action(Player& player, int action, std::string& message) {
-    return false; 
+    if (action == 1) return upgrade_workshop(player, message);
+    if (action >= 2 && action <= TOOL_COUNT + 1) return craft_tool(player, action - 2, message);
+    message = "올바르지 않은 작업장 행동입니다.";
+    return false;
 }
 
 void WorkshopSystem::show_menu(Player& player) {
     while (true) {
-        system("clear");
-        std::cout << "🔨 [대장간] 작업장 레벨: Lv." << level_ << " / " << MAX_LEVEL << "\n";
-        std::cout << " [현재 장비] 괭이: Lv." << player.get_hoe_grade() 
-                  << " | 낚싯대: Lv." << player.get_fishing_rod_grade() 
-                  << " | 곡괭이: Lv." << player.get_pickaxe_grade() << "\n";
-        std::cout << " 골드: " << player.get_money() << "G | 나무: " << player.count_item(ItemType::WOOD) << "\n";
-        std::cout << " 광석: 구리(" << player.count_item(ItemType::COPPER) << "), 철(" 
-                  << player.count_item(ItemType::IRON) << "), 금(" << player.count_item(ItemType::GOLD) << ")\n\n";
-
-        std::cout << "1. 작업장 증축 (Lv. " << level_ << " -> " << level_ + 1 << ")\n";
-        std::cout << "2. 동제 농기구 제작 (제작소 Lv.1, 캐릭터 Lv.6 필요)\n";
-        std::cout << "3. 철제 농기구 제작 (제작소 Lv.2, 캐릭터 Lv.10 필요)\n";
-        std::cout << "4. 금제 농기구 제작 (제작소 Lv.3, 캐릭터 Lv.20 필요)\n";
-        std::cout << "0. 나가기\n> ";
-
-        int choice = read_int_safe(0);
-        if (choice == 0) break;
-
-        std::string msg;
-        if (choice == 1) {
-            upgrade_workshop(player, msg);
-        } else if (choice >= 2 && choice <= 4) {
-            int target_grade = choice - 1;
-            std::cout << "\n어떤 도구를 제작하시겠습니까? (1.괭이  2.낚싯대  3.곡괭이  0.취소): ";
-            int tool_choice = read_int_safe(0);
-            if (tool_choice >= 1 && tool_choice <= 3) {
-                upgrade_tool(player, target_grade, tool_choice, msg);
-            } else {
-                msg = "제작을 취소했습니다.";
-            }
-        } else {
-            msg = "잘못된 선택입니다.";
+        std::cout << "\n[작업장] Lv." << level_ << " / " << MAX_LEVEL
+                  << " | 괭이 " << player.get_hoe_grade()
+                  << " | 낚싯대 " << player.get_rod_grade()
+                  << " | 곡괭이 " << player.get_pick_grade() << "\n";
+        std::cout << "1. 작업장 증축\n";
+        for (int i = 0; i < TOOL_COUNT; ++i) {
+            const auto& r = TOOL_RECIPES[i];
+            std::cout << (i + 2) << ". " << r.name << " - " << r.effect << "\n";
         }
-        std::cout << "\n" << msg << "\n[아무 키나 눌러 계속]\n";
-        wait_key();
+        std::cout << "0. 뒤로\n>> " << std::flush;
+
+        int action = read_int_safe(-1);
+        if (action == 0) return;
+        std::string msg;
+        bool acted = perform_action(player, action, msg);
+        std::cout << (acted ? "\n성공: " : "\n안내: ") << msg << "\n";
     }
 }
 
 bool WorkshopSystem::upgrade_workshop(Player& player, std::string& message) {
-    if (level_ >= MAX_LEVEL) { message = "이미 최고 레벨입니다."; return false; }
-    
-    int gold_req = (level_ == 0) ? 100 : (level_ == 1) ? 400 : 1000;
-    int wood_req = (level_ == 0) ? 10 : (level_ == 1) ? 25 : 60;
-
-    if (player.get_money() < gold_req || player.count_item(ItemType::WOOD) < wood_req) {
-        message = "재료가 부족합니다! (요구: " + std::to_string(gold_req) + "G, 나무 " + std::to_string(wood_req) + "개)";
+    if (level_ >= MAX_LEVEL) {
+        message = "작업장이 이미 최고 레벨입니다.";
         return false;
     }
-    player.spend_money(gold_req);
-    player.remove_item(ItemType::WOOD, wood_req);
+
+    int need_level = 0;
+    int base_gold = 0;
+    int need_stamina = 0;
+    if (level_ == 0) { need_level = 6; base_gold = 200; need_stamina = 8; }
+    else if (level_ == 1) { need_level = 10; base_gold = 600; need_stamina = 15; }
+    else { need_level = 15; base_gold = 1200; need_stamina = 20; }
+
+    int need_gold = player.discounted_upgrade_cost(base_gold);
+    if (player.get_level() < need_level) {
+        message = "플레이어 Lv." + std::to_string(need_level) + "이 필요합니다.";
+        return false;
+    }
+    if (!player.spend_money(need_gold)) {
+        message = "골드가 부족합니다. 필요: " + std::to_string(need_gold) + "G";
+        return false;
+    }
+    if (!player.use_stamina(need_stamina)) {
+        player.add_money(need_gold);
+        message = "스태미나가 부족합니다. 필요: " + std::to_string(need_stamina);
+        return false;
+    }
+
     ++level_;
-    message = "🎉 작업장을 Lv." + std::to_string(level_) + "(으)로 증축했습니다!";
+    player.add_exp(80 * level_);
+    message = "작업장을 Lv." + std::to_string(level_) + "로 증축했습니다. 비용 "
+            + std::to_string(need_gold) + "G.";
+    if (need_gold < base_gold) message += " INT 할인 적용.";
     return true;
 }
 
-// 기존 upgrade_tool의 인자를 수정하여(tool_type 추가) 기획서 맞춤형으로 구현!
-bool WorkshopSystem::upgrade_tool(Player& player, int target_grade, int tool_type, std::string& message) {
-    int req_p_lvl = (target_grade == 1) ? 6 : (target_grade == 2) ? 10 : 20;
-    if (player.get_level() < req_p_lvl) { message = "캐릭터 레벨이 부족합니다! (필요 Lv." + std::to_string(req_p_lvl) + ")"; return false; }
-    if (level_ < target_grade) { message = "작업장 레벨이 부족합니다! (필요 Lv." + std::to_string(target_grade) + ")"; return false; }
-
-    int current_grade = (tool_type == 1) ? player.get_hoe_grade() : (tool_type == 2) ? player.get_fishing_rod_grade() : player.get_pickaxe_grade();
-    if (current_grade >= target_grade) { message = "이미 해당 등급이거나 더 좋은 도구를 가지고 있습니다."; return false; }
-
-    int gold = (target_grade == 1) ? 200 : (target_grade == 2) ? 600 : 2000;
-    ItemType ore = (target_grade == 1) ? ItemType::COPPER : (target_grade == 2) ? ItemType::IRON : ItemType::GOLD;
-    int wood = 0, ore_amt = 0;
-
-    // 기획서 재료비 테이블 적용
-    if (target_grade == 1) { // 동제
-        if (tool_type == 1) { wood = 8; ore_amt = 4; } else if (tool_type == 2) { wood = 12; ore_amt = 2; } else { wood = 10; ore_amt = 3; }
-    } else if (target_grade == 2) { // 철제
-        if (tool_type == 1) { wood = 15; ore_amt = 5; } else if (tool_type == 2) { wood = 25; ore_amt = 3; } else { wood = 30; ore_amt = 4; }
-    } else { // 금제
-        if (tool_type == 1) { wood = 30; ore_amt = 5; } else if (tool_type == 2) { wood = 50; ore_amt = 2; } else { wood = 40; ore_amt = 3; }
+bool WorkshopSystem::craft_tool(Player& player, int recipe_index, std::string& message) {
+    if (recipe_index < 0 || recipe_index >= TOOL_COUNT) {
+        message = "알 수 없는 제작식입니다.";
+        return false;
     }
 
-    if (player.get_money() < gold || player.count_item(ItemType::WOOD) < wood || player.count_item(ore) < ore_amt) {
-        message = "제작 재료 또는 골드가 부족합니다."; return false;
+    const ToolRecipe& r = TOOL_RECIPES[recipe_index];
+    int money_req = player.discounted_upgrade_cost(r.money_req);
+    if (level_ < r.workshop_level) {
+        message = "작업장 Lv." + std::to_string(r.workshop_level) + "이 필요합니다.";
+        return false;
+    }
+    if (current_grade_for(player, r.tool_type) >= r.target_grade) {
+        message = "이미 같거나 더 좋은 도구를 보유하고 있습니다.";
+        return false;
+    }
+    if (player.get_money() < money_req ||
+        player.count_item(ItemType::COPPER) < r.copper_req ||
+        player.count_item(ItemType::IRON) < r.iron_req ||
+        player.count_item(ItemType::GOLD) < r.gold_req ||
+        player.count_item(ItemType::WOOD) < r.wood_req) {
+        message = "재료가 부족합니다. 필요: " + std::to_string(money_req) + "G, 구리 "
+                + std::to_string(r.copper_req) + ", 철 " + std::to_string(r.iron_req)
+                + ", 금 " + std::to_string(r.gold_req) + ", 나무 " + std::to_string(r.wood_req);
+        return false;
     }
 
-    player.spend_money(gold); player.remove_item(ItemType::WOOD, wood); player.remove_item(ore, ore_amt);
-
-    if (tool_type == 1) player.set_hoe_grade(target_grade);
-    else if (tool_type == 2) player.set_fishing_rod_grade(target_grade);
-    else player.set_pickaxe_grade(target_grade);
-
-    message = "✨ 성공적으로 장비를 제작 및 장착했습니다!";
+    player.spend_money(money_req);
+    player.remove_item(ItemType::COPPER, r.copper_req);
+    player.remove_item(ItemType::IRON, r.iron_req);
+    player.remove_item(ItemType::GOLD, r.gold_req);
+    player.remove_item(ItemType::WOOD, r.wood_req);
+    set_grade_for(player, r.tool_type, r.target_grade);
+    player.add_exp(60 * r.target_grade);
+    message = r.name + " 제작 완료. " + r.effect;
+    if (money_req < r.money_req) message += " INT 할인 적용.";
     return true;
 }

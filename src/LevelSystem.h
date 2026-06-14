@@ -3,7 +3,7 @@
 class LevelSystem {
 public:
     static constexpr int MAX_LEVEL = 30;
-    static constexpr int INITIAL_STAMINA = 20;
+    static constexpr int INITIAL_STAMINA = 10;
 
     LevelSystem();
 
@@ -15,6 +15,9 @@ public:
     int get_max_stamina() const { return max_stamina_; }
 
     static int required_exp_for_level(int target_level);
+
+    // 보너스 레벨업 체크 (Lv 6,10,16,20,26,30)
+    static bool is_bonus_level(int level);
 
 private:
     int level_;

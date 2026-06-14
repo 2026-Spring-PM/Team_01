@@ -1,25 +1,33 @@
 #pragma once
 
 #include "Player.h"
-#include <string>
 #include "ItemType.h"
 
+#include <string>
+#include <vector>
+
+struct RecipeInfo {
+    int kitchen_level;
+    std::string name;
+    ItemType result;
+    int sell_price;
+    std::vector<ItemType> ingredients;
+};
 
 class KitchenSystem {
 public:
     KitchenSystem();
 
     void interact(Player& player);
+    void show_menu(Player& player);
+    bool cook(Player& player, std::vector<ItemType> inputs, std::string& message);
+    bool upgrade(Player& player, std::string& message);
+    std::string get_recipe_name(std::vector<ItemType> inputs);
+    static int recipe_count();
     int get_level() const { return level_; }
-    void perform_action(Player& player, int action, std::string& message); 
+    bool perform_action(Player& player, int sel, std::string& message);
 
 private:
     int level_;
-    static constexpr int MAX_LEVEL = 3;
-
-    void show_menu(Player& player);
-    bool upgrade(Player& player, std::string& message);
-    bool cook_bread(Player& player, std::string& message);
-    bool cook_grilled_fish(Player& player, std::string& message);
-    bool cook_apple_pie(Player& player, std::string& message);
+    static constexpr int MAX_LEVEL = 4;
 };

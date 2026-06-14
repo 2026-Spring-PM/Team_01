@@ -1,111 +1,228 @@
-// [KitchenSystem.cpp]
 #include "KitchenSystem.h"
-#include "Player.h"  // <--- ★ 이 헤더가 없으면 perform_action 내부에서 에러가 납니다!
-#include "Input.h"   // read_int_safe, wait_key 사용을 위해 필요
+
+#include "Input.h"
+
+#include <algorithm>
+#include <cstdlib>
 #include <iostream>
-#include <vector>
+#include <sstream>
+
+namespace {
+constexpr int KITCHEN_UPGRADE_COST[] = {0, 300, 600, 1000};
+constexpr int KITCHEN_UPGRADE_LEVEL[] = {1, 6, 10, 16};
+
+const RecipeInfo RECIPES[] = {
+    {1, "감자 수프", ItemType::FOOD_POTATO_SOUP, 30, {ItemType::POTATO, ItemType::POTATO}},
+    {1, "당근 달걀 롤", ItemType::FOOD_CARROT_EGG_ROLL, 75, {ItemType::CARROT, ItemType::EGG, ItemType::CARROT}},
+    {1, "고등어 당근 조림", ItemType::FOOD_MACKEREL_CARROT, 70, {ItemType::FISH_MACKEREL, ItemType::CARROT, ItemType::CARROT}},
+    {2, "돼지고기 감자 짜글이", ItemType::FOOD_PORK_POTATO, 390, {ItemType::PORK, ItemType::POTATO, ItemType::POTATO}},
+    {2, "감자 밀 부침개", ItemType::FOOD_POTATO_WHEAT_PANCAKE, 130, {ItemType::WHEAT, ItemType::POTATO, ItemType::EGG, ItemType::WHEAT}},
+    {2, "당근 광어 스테이크", ItemType::FOOD_CARROT_FLATFISH, 210, {ItemType::FISH_FLATFISH, ItemType::CARROT, ItemType::CARROT}},
+    {3, "3색 당근 쌀밥", ItemType::FOOD_3COLOR_CARROT_RICE, 220, {ItemType::RICE, ItemType::CARROT, ItemType::EGG, ItemType::RICE}},
+    {3, "감자 매쉬드 비프", ItemType::FOOD_MASHED_BEEF, 540, {ItemType::MILK, ItemType::PORK, ItemType::POTATO, ItemType::POTATO}},
+    {3, "당근 사과 주스 만찬", ItemType::FOOD_CARROT_APPLE_JUICE, 320, {ItemType::APPLE, ItemType::CARROT, ItemType::MILK, ItemType::APPLE}},
+    {4, "참치 감자 스테이크", ItemType::FOOD_TUNA_POTATO, 1050, {ItemType::FISH_TUNA, ItemType::POTATO, ItemType::CARROT, ItemType::POTATO}},
+    {4, "특선 하이라이스", ItemType::FOOD_HAILIGHT_RICE, 760, {ItemType::RICE, ItemType::PORK, ItemType::CARROT, ItemType::MILK, ItemType::RICE, ItemType::CARROT}},
+    {4, "사과 감자 무스 케이크", ItemType::FOOD_APPLE_POTATO_CAKE, 460, {ItemType::APPLE, ItemType::WHEAT, ItemType::POTATO, ItemType::MILK, ItemType::APPLE, ItemType::WHEAT, ItemType::POTATO}},
+};
+
+constexpr int RECIPE_COUNT = static_cast<int>(sizeof(RECIPES) / sizeof(RECIPES[0]));
+
+bool has_ingredients(const Player& player, const std::vector<ItemType>& ingredients) {
+    for (ItemType item : ingredients) {
+        int needed = static_cast<int>(std::count(ingredients.begin(), ingredients.end(), item));
+        if (player.count_item(item) < needed) return false;
+    }
+    return true;
+}
+
+std::string ingredient_text(const std::vector<ItemType>& ingredients) {
+    std::ostringstream oss;
+    for (std::size_t i = 0; i < ingredients.size(); ++i) {
+        if (i > 0) oss << ", ";
+        oss << item_name(ingredients[i]);
+    }
+    return oss.str();
+}
+
+int ingredient_rarity(ItemType item) {
+    switch (item) {
+        case ItemType::POTATO:
+        case ItemType::CARROT:
+        case ItemType::EGG:
+        case ItemType::FISH_MACKEREL:
+            return 1;
+        case ItemType::WHEAT:
+        case ItemType::RICE:
+        case ItemType::PORK:
+        case ItemType::FISH_FLATFISH:
+            return 2;
+        case ItemType::APPLE:
+        case ItemType::MILK:
+        case ItemType::FISH_TUNA:
+            return 3;
+        default:
+            return 0;
+    }
+}
+
+ItemType monster_food_for_sum(int rarity_sum) {
+    if (rarity_sum <= 5) return ItemType::MONSTER_FOOD_LOW;
+    if (rarity_sum <= 10) return ItemType::MONSTER_FOOD_MID;
+    return ItemType::MONSTER_FOOD_HIGH;
+}
+
+bool consume_ingredients(Player& player, const std::vector<ItemType>& ingredients, bool allow_luk_save, std::string* saved_text) {
+    int saved_index = -1;
+    if (allow_luk_save && player.should_save_cooking_ingredient() && !ingredients.empty()) {
+        saved_index = std::rand() % static_cast<int>(ingredients.size());
+    }
+    for (std::size_t i = 0; i < ingredients.size(); ++i) {
+        if (static_cast<int>(i) == saved_index) continue;
+        player.remove_item(ingredients[i], 1);
+    }
+    if (saved_index >= 0 && saved_text) {
+        *saved_text = item_name(ingredients[saved_index]);
+    }
+    return saved_index >= 0;
+}
+}
 
 KitchenSystem::KitchenSystem() : level_(1) {}
 
+int KitchenSystem::recipe_count() {
+    return RECIPE_COUNT;
+}
 
-// [텍스트 터미널 모드용 상호작용 인터페이스]
 void KitchenSystem::interact(Player& player) {
+    show_menu(player);
+}
+
+void KitchenSystem::show_menu(Player& player) {
     while (true) {
         system("clear");
-        std::cout << "🍳 [주방 - 현재 레벨 " << level_ << "] 스태미나: " << player.get_stamina() << "/" << player.get_stamina_max() << "\n";
-        std::cout << "───────────────────────────────────────────────\n";
-        std::cout << "[주방 Lv.1]\n";
-        std::cout << " 1. 감자 수프 (감자 2) | 판매가: 30G\n";
-        std::cout << " 2. 당근 달걀 롤 (당근 2 + 달걀 1) | 판매가: 75G\n";
-        std::cout << " 3. 고등어 당근 조림 (고등어 1 + 당근 1) | 판매가: 70G\n\n";
-        std::cout << "[주방 Lv.2]\n";
-        std::cout << " 4. 돼지고기 감자 짜글이 (돼지 1 + 감자 2) | 판매가: 390G\n";
-        std::cout << " 5. 감자 밀 부침개 (밀 2 + 감자 1 + 달걀 1) | 판매가: 130G\n";
-        std::cout << " 6. 당근 광어 스테이크 (광어 1 + 당근 2) | 판매가: 210G\n\n";
-        std::cout << "[주방 Lv.3]\n";
-        std::cout << " 7. 3색 당근 쌀밥 (쌀 2 + 당근 2 + 달걀 1) | 판매가: 220G\n";
-        std::cout << " 8. 매쉬드 비프 스테이크 (우유 1 + 돼지 1 + 감자 2) | 판매가: 540G\n";
-        std::cout << " 9. 당근 사과 주스 만찬 (사과 2 + 당근 2 + 우유 1) | 판매가: 320G\n\n";
-        std::cout << "[주방 Lv.4]\n";
-        std::cout << "10. 국왕의 참치 스테이크 (참치 1 + 감자 3 + 당근 1) | 판매가: 1050G\n";
-        std::cout << "11. 특선 하이라이스 만찬 (쌀 2 + 돼지 1 + 당근 2 + 우유 1) | 판매가: 760G\n";
-        std::cout << "12. 사과 감자 무스 케이크 (사과 2 + 밀 2 + 감자 2 + 우유 1) | 판매가: 460G\n";
-        std::cout << "───────────────────────────────────────────────\n";
-        std::cout << "13. 주방 업그레이드 (레벨별 골드 및 캐릭터 레벨 필요)\n";
-        std::cout << "0. 나가기\n>> " << std::flush;
+        std::cout << "[주방] Lv." << level_ << " / " << MAX_LEVEL << "\n";
+        for (int i = 0; i < RECIPE_COUNT; ++i) {
+            const auto& r = RECIPES[i];
+            std::cout << (i + 1) << ". " << r.name << " (Lv." << r.kitchen_level << ") - "
+                      << ingredient_text(r.ingredients) << "\n";
+        }
+        std::cout << "13. 주방 업그레이드\n14. 하급 몬스터 푸드 샘플\n15. 중급 몬스터 푸드 샘플\n16. 고급 몬스터 푸드 샘플\n0. 뒤로\n>> " << std::flush;
 
-        int choice = read_int_safe(-1);
-        if (choice == 0) return;
-        if (choice < 1 || choice > 13) continue;
-
-        std::string message;
-        perform_action(player, choice, message);
-        std::cout << "\n" << message << "\n";
+        int sel = read_int_safe(-1);
+        if (sel == 0) return;
+        std::string msg;
+        perform_action(player, sel, msg);
+        std::cout << "\n" << msg << "\n";
         wait_key();
     }
 }
 
-// [GUI 및 텍스트 공용 핵심 로직]
-void KitchenSystem::perform_action(Player& player, int action, std::string& message) {
-    // [주방 업그레이드 (action == 13)]
-    if (action == 13) {
-        if (level_ >= 4) { message = "주방이 이미 최고 레벨(4)입니다."; return; }
-        int req_p_lvl = (level_ == 1) ? 10 : (level_ == 2) ? 16 : 20;
-        int req_gold = (level_ == 1) ? 1000 : (level_ == 2) ? 2500 : 5000;
-        
-        if (player.get_level() < req_p_lvl) { message = "레벨이 부족합니다! (필요 Lv." + std::to_string(req_p_lvl) + ")"; return; }
-        if (player.get_money() < req_gold) { message = "골드가 부족합니다! (필요 " + std::to_string(req_gold) + "G)"; return; }
-        
-        player.spend_money(req_gold);
-        level_++;
-        message = "🎉 주방을 Lv." + std::to_string(level_) + "(으)로 증축했습니다!";
-        return;
-    }
-
-    // [요리 레시피 테이블]
-    struct Recipe {
-        int req_level; int stam_cost; ItemType result; std::string name;
-        std::vector<std::pair<ItemType, int>> ingredients;
-    };
-
-    static const Recipe recipes[] = {
-        // 주방 Lv 1 (스태미나 -2)
-        {1, 2, ItemType::FOOD_POTATO_SOUP, "감자 수프", {{ItemType::POTATO, 2}}},
-        {1, 2, ItemType::FOOD_CARROT_EGG_ROLL, "당근 달걀 롤", {{ItemType::CARROT, 2}, {ItemType::EGG, 1}}},
-        {1, 2, ItemType::FOOD_MACKEREL_STEW, "고등어 당근 조림", {{ItemType::FISH_MACKEREL, 1}, {ItemType::CARROT, 1}}},
-        // 주방 Lv 2 (스태미나 -2)
-        {2, 2, ItemType::FOOD_PORK_STEW, "돼지고기 감자 짜글이", {{ItemType::PORK, 1}, {ItemType::POTATO, 2}}},
-        {2, 2, ItemType::FOOD_POTATO_PANCAKE, "감자 밀 부침개", {{ItemType::WHEAT, 2}, {ItemType::POTATO, 1}, {ItemType::EGG, 1}}},
-        {2, 2, ItemType::FOOD_FLATFISH_STEAK, "당근 광어 스테이크", {{ItemType::FISH_FLATFISH, 1}, {ItemType::CARROT, 2}}},
-        // 주방 Lv 3 (스태미나 -3)
-        {3, 3, ItemType::FOOD_CARROT_RICE, "3색 당근 쌀밥", {{ItemType::RICE, 2}, {ItemType::CARROT, 2}, {ItemType::EGG, 1}}},
-        {3, 3, ItemType::FOOD_BEEF_STEAK, "매쉬드 비프 스테이크", {{ItemType::MILK, 1}, {ItemType::PORK, 1}, {ItemType::POTATO, 2}}},
-        {3, 3, ItemType::FOOD_APPLE_JUICE, "당근 사과 주스 만찬", {{ItemType::APPLE, 2}, {ItemType::CARROT, 2}, {ItemType::MILK, 1}}},
-        // 주방 Lv 4 (스태미나 -3)
-        {4, 3, ItemType::FOOD_TUNA_STEAK, "국왕의 참치 스테이크", {{ItemType::FISH_TUNA, 1}, {ItemType::POTATO, 3}, {ItemType::CARROT, 1}}},
-        {4, 3, ItemType::FOOD_HAYASHI_RICE, "특선 하이라이스 만찬", {{ItemType::RICE, 2}, {ItemType::PORK, 1}, {ItemType::CARROT, 2}, {ItemType::MILK, 1}}},
-        {4, 3, ItemType::FOOD_APPLE_MOUSSE, "사과 감자 무스 케이크", {{ItemType::APPLE, 2}, {ItemType::WHEAT, 2}, {ItemType::POTATO, 2}, {ItemType::MILK, 1}}}
-    };
-
-    if (action < 1 || action > 12) { message = "잘못된 요리 선택입니다."; return; }
-    const Recipe& r = recipes[action - 1];
-
-    if (level_ < r.req_level) { message = "주방 레벨이 낮아 이 요리를 만들 수 없습니다. (현재 Lv." + std::to_string(level_) + " / 필요 Lv." + std::to_string(r.req_level) + ")"; return; }
-    if (player.get_stamina() < r.stam_cost) { message = "스태미나가 부족하여 요리할 수 없습니다."; return; }
-
-    // 재료 보유량 체크
-    for (const auto& ing : r.ingredients) {
-        if (player.count_item(ing.first) < ing.second) {
-            message = "재료가 부족합니다! (" + r.name + " 제작 실패)"; return;
+bool KitchenSystem::cook(Player& player, std::vector<ItemType> inputs, std::string& message) {
+    std::sort(inputs.begin(), inputs.end());
+    for (const auto& recipe : RECIPES) {
+        auto recipe_inputs = recipe.ingredients;
+        std::sort(recipe_inputs.begin(), recipe_inputs.end());
+        if (inputs == recipe_inputs) {
+            if (level_ < recipe.kitchen_level) {
+                message = recipe.name + "은(는) 주방 Lv." + std::to_string(recipe.kitchen_level) + "이 필요합니다.";
+                return false;
+            }
+            if (!has_ingredients(player, recipe.ingredients)) {
+                message = "재료가 부족합니다: " + ingredient_text(recipe.ingredients);
+                return false;
+            }
+            std::string saved;
+            bool saved_one = consume_ingredients(player, recipe.ingredients, true, &saved);
+            player.add_item(recipe.result, 1);
+            player.add_exp(25 * recipe.kitchen_level);
+            message = recipe.name + " 요리 완료.";
+            if (saved_one) message += " LUK 효과로 재료 1개를 아꼈습니다: " + saved + ".";
+            return true;
         }
     }
 
-    // 스태미나 및 재료 차감, 아이템 지급
-    for (const auto& ing : r.ingredients) {
-        player.remove_item(ing.first, ing.second);
+    if (inputs.size() < 2 || inputs.size() > 6) {
+        message = "몬스터 푸드는 재료 2~6개가 필요합니다.";
+        return false;
     }
-    player.use_stamina(r.stam_cost);
-    player.add_item(r.result, 1);
 
-    message = "🍳 [" + r.name + "] 완성! (스태미나 -" + std::to_string(r.stam_cost) + ")";
+    int rarity_sum = 0;
+    for (ItemType item : inputs) {
+        int rarity = ingredient_rarity(item);
+        if (rarity <= 0) {
+            message = "작물, 가축 생산물, 생선만 몬스터 푸드 재료로 사용할 수 있습니다.";
+            return false;
+        }
+        rarity_sum += rarity;
+    }
+    if (!has_ingredients(player, inputs)) {
+        message = "몬스터 푸드 재료가 부족합니다: " + ingredient_text(inputs);
+        return false;
+    }
+
+    consume_ingredients(player, inputs, false, nullptr);
+    ItemType result = monster_food_for_sum(rarity_sum);
+    player.add_item(result, 1);
+    player.add_exp(20 + rarity_sum * 2);
+    message = "알 수 없는 레시피에서 " + item_name(result) + " 생성. 희귀도 합 "
+            + std::to_string(rarity_sum) + ".";
+    return true;
+}
+
+bool KitchenSystem::upgrade(Player& player, std::string& message) {
+    if (level_ >= MAX_LEVEL) {
+        message = "주방이 이미 최고 레벨입니다.";
+        return false;
+    }
+
+    int target = level_ + 1;
+    int base_cost = KITCHEN_UPGRADE_COST[target - 1];
+    int cost = player.discounted_upgrade_cost(base_cost);
+    int required_level = KITCHEN_UPGRADE_LEVEL[target - 1];
+    if (player.get_level() < required_level) {
+        message = "플레이어 Lv." + std::to_string(required_level) + "이 필요합니다.";
+        return false;
+    }
+    if (!player.spend_money(cost)) {
+        message = "골드가 부족합니다. 필요: " + std::to_string(cost) + "G";
+        return false;
+    }
+
+    level_ = target;
+    player.add_exp(60 * level_);
+    message = "주방을 Lv." + std::to_string(level_) + "로 업그레이드했습니다. 비용 "
+            + std::to_string(cost) + "G.";
+    if (cost < base_cost) message += " INT 할인 적용.";
+    return true;
+}
+
+std::string KitchenSystem::get_recipe_name(std::vector<ItemType> inputs) {
+    std::sort(inputs.begin(), inputs.end());
+    for (const auto& recipe : RECIPES) {
+        auto recipe_inputs = recipe.ingredients;
+        std::sort(recipe_inputs.begin(), recipe_inputs.end());
+        if (inputs == recipe_inputs) return recipe.name;
+    }
+    return "";
+}
+
+bool KitchenSystem::perform_action(Player& player, int sel, std::string& message) {
+    if (sel == RECIPE_COUNT + 1 || sel == 13) {
+        return upgrade(player, message);
+    }
+    if (sel >= 1 && sel <= RECIPE_COUNT) {
+        return cook(player, RECIPES[sel - 1].ingredients, message);
+    }
+    if (sel == 14) {
+        return cook(player, {ItemType::POTATO, ItemType::CARROT}, message);
+    }
+    if (sel == 15) {
+        return cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::PORK}, message);
+    }
+    if (sel == 16) {
+        return cook(player, {ItemType::APPLE, ItemType::MILK, ItemType::FISH_TUNA, ItemType::PORK, ItemType::RICE}, message);
+    }
+    message = "올바르지 않은 주방 행동입니다.";
+    return false;
 }
