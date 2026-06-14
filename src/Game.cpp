@@ -1,4 +1,4 @@
-﻿#include "Game.h"
+#include "Game.h"
 #include "Input.h"
 #include "CropSystem.h"
 #include "LivestockSystem.h"
@@ -20,6 +20,7 @@ Game::Game()
       workshop_(),
       event_system_(),
       barn_(),
+      tutorial_(),
       current_area_(GameArea::FARM),
       farm_return_x_(Map::BED_X),
       farm_return_y_(Map::BED_Y),
@@ -45,6 +46,7 @@ void Game::run() {
     gui_mode_ = gui_renderer_.initialize();
     if (gui_mode_) {
         renderer_.add_message("GUI 모드가 시작되었습니다. WASD 이동, J/Enter/Space 상호작용.");
+        show_gui_tutorial();
         while (is_running_) {
             sync_gui_event_status();
             if (current_area_ == GameArea::BARN) {
@@ -66,6 +68,9 @@ void Game::run() {
 #endif
 
     while (is_running_) {
+        if (tutorial_.is_active()) {
+            show_tutorial();
+        }
         renderer_.draw(player_, map_);
         char input = getch();
         handle_input(input);
@@ -1275,8 +1280,31 @@ void Game::show_gui_skill_tree() {
     renderer_.add_message(msg);
     gui_renderer_.show_notice("스킬 결과", msg);
 }
+
 #endif
 
 
+void Game::show_tutorial() {
+    while (tutorial_.is_active()) {
+        system("clear");
+        std::cout << "[" << Tutorial::npc_name() << "] " << tutorial_.current_title() << "\n\n";
+        std::cout << tutorial_.current_dialogue() << "\n\n";
+        std::cout << "(" << (tutorial_.current_step() + 1) << "/" << tutorial_.total_steps() << ") ";
+        if (tutorial_.current_step() + 1 < tutorial_.total_steps()) {
+            std::cout << "Enter를 누르면 다음으로..." << std::flush;
+        } else {
+            std::cout << "Enter를 누르면 게임을 시작합니다!" << std::flush;
+        }
+        getch();
+        tutorial_.advance();
+    }
+    system("clear");
+    renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
+}
 
-
+#ifdef FARM_GUI
+void Game::show_gui_tutorial() {
+    gui_renderer_.run_tutorial(player_, map_, tutorial_);
+    renderer_.add_message("튜토리얼 완료! 이제 자유롭게 농장을 운영하세요.");
+}
+#endif

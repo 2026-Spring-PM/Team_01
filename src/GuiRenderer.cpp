@@ -1,6 +1,7 @@
 #include "GuiRenderer.h"
 #include "ItemType.h"
 #include "Season.h"
+#include "Tutorial.h"
 
 #include <algorithm>
 #include <cmath>
@@ -164,7 +165,8 @@ bool GuiRenderer::initialize() {
         {"barn_hay_pile", "barn_hay_pile.png"}, {"barn_hay_low", "barn_hay_low.png"},
         {"barn_barrel", "barn_barrel.png"}, {"barn_sack", "barn_sack.png"},
         {"barn_crate", "barn_crate.png"}, {"barn_bucket", "barn_bucket.png"},
-        {"barn_wall_panel", "barn_wall_panel.png"}
+        {"barn_wall_panel", "barn_wall_panel.png"},
+        {"npc_seed", "npc_seed.png"}
     };
 
     for (const auto& e : entries) {
@@ -260,12 +262,26 @@ std::string GuiRenderer::item_texture_key(ItemType item) const {
     return "bag";
 }
 
+SDL_Texture* GuiRenderer::capture_screen_to_texture() {
+    if (!renderer_) return nullptr;
+    int w, h;
+    if (SDL_GetRendererOutputSize(renderer_, &w, &h) != 0) return nullptr;
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (!surface) return nullptr;
+    SDL_RenderReadPixels(renderer_, NULL, SDL_PIXELFORMAT_ARGB8888, surface->pixels, surface->pitch);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer_, surface);
+    SDL_FreeSurface(surface);
+    return tex;
+}
+
 int GuiRenderer::show_choice(const std::string& title,
                              const std::string& message,
                              const std::vector<std::pair<int, std::string>>& buttons,
                              int cancel_id) {
     if (buttons.empty()) return cancel_id;
     if (!ready_ || !window_ || !renderer_) return cancel_id;
+
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
 
     SDL_SetWindowTitle(window_, title.c_str());
 
@@ -281,6 +297,10 @@ int GuiRenderer::show_choice(const std::string& title,
     const int button_start_y = panel_y + 250;
 
     auto draw_dialog = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 105});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 245});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -353,12 +373,19 @@ void GuiRenderer::show_notice(const std::string& title, const std::string& messa
 }
 
 void GuiRenderer::show_event_popup(const std::string& title, const std::string& message) {
+    if (!ready_ || !window_ || !renderer_) return;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
+
     const int panel_w = 760;
     const int panel_h = 430;
     const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
     const int panel_y = (WINDOW_HEIGHT - panel_h) / 2;
 
     auto draw_dialog = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 170});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 32, 22, 250});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{255, 210, 96, 255});
@@ -413,6 +440,9 @@ int GuiRenderer::choose_quantity(const std::string& title, const std::string& me
 
 int GuiRenderer::prompt_quantity(const std::string& title, const std::string& message, int max_quantity, int default_quantity) {
     if (max_quantity <= 0) return 0;
+    if (!ready_ || !window_ || !renderer_) return 0;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
+
     std::string input;
     const int panel_w = 680;
     const int panel_h = 360;
@@ -425,6 +455,10 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
     SDL_StartTextInput();
 
     auto draw_dialog = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 115});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 248});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -469,8 +503,6 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
                     SDL_StopTextInput();
                     return std::max(0, std::min(qty, max_quantity));
                 }
-                // 숫자 입력은 SDL_TEXTINPUT에서만 처리한다.
-                // KEYDOWN에서도 숫자를 추가하면 일부 환경에서 1회 입력이 2회 입력되는 문제가 생긴다.
             }
             if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
                 SDL_Point pt{event.button.x, event.button.y};
@@ -491,6 +523,9 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
 }
 
 void GuiRenderer::show_inventory(const Player& player) {
+    if (!ready_ || !window_ || !renderer_) return;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
+
     const int panel_w = 760;
     const int panel_h = 620;
     const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
@@ -499,6 +534,10 @@ void GuiRenderer::show_inventory(const Player& player) {
     auto items = player.inventory().get_all();
 
     auto draw_dialog = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 115});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 248});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -551,6 +590,117 @@ void GuiRenderer::show_inventory(const Player& player) {
     }
 }
 
+void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& tutorial) {
+    if (!ready_ || !window_ || !renderer_) return;
+
+    while (tutorial.is_active()) {
+        std::string title = std::string(Tutorial::npc_name()) + " - " + tutorial.current_title();
+        std::string body = tutorial.current_dialogue();
+        body += "\n\n(" + std::to_string(tutorial.current_step() + 1) + "/" + std::to_string(tutorial.total_steps()) + ")  [Enter/클릭] 다음으로";
+        
+        int hx = -1, hy = -1;
+        int step = tutorial.current_step();
+        if (step == 0 || step == 1 || step == 3 || step == 16 || step == 17 || step == 18 || step == 19 || step == 20) {
+            hx = player.get_x(); hy = player.get_y();
+        } else if (step == 2) { hx = Map::BED_X; hy = Map::BED_Y; }
+        else if (step == 4 || step == 5) { hx = 4; hy = 5; } 
+        else if (step == 6) { hx = Map::BARN_X; hy = Map::BARN_Y; }
+        else if (step == 7) { hx = Map::MARKET_X; hy = Map::MARKET_Y; }
+        else if (step == 8 || step == 9 || step == 10 || step == 11) { hx = 10; hy = 0; }
+        else if (step == 12) { hx = 1; hy = 5; }
+        else if (step == 13) { hx = Map::MINE_X; hy = Map::MINE_Y; }
+        else if (step == 14) {
+            for (int y = 0; y < Map::HEIGHT; ++y) {
+                for (int x = 0; x < Map::WIDTH; ++x) {
+                    if (map.get_tile(x, y).type == TileType::TREE) {
+                        hx = x; hy = y; break;
+                    }
+                }
+                if (hx != -1) break;
+            }
+        }
+        
+        bool next_step = false;
+        
+        auto draw_frame = [&]() {
+            SDL_RenderClear(renderer_);
+            visual_x_ = player.get_x();
+            visual_y_ = player.get_y();
+            
+            // Draw background game map WITHOUT presenting
+            draw(player, map, "튜토리얼 진행 중...", false);
+            
+            // Overlay
+            fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 110});
+            
+            // Highlight target
+            if (hx != -1 && hy != -1) {
+                int px = hx * TILE_SIZE;
+                int py = hy * TILE_SIZE;
+                Uint32 ticks = SDL_GetTicks();
+                int offset = static_cast<int>((std::sin(ticks * 0.005) + 1.0) * 10.0);
+                
+                // Highlight box
+                draw_rect_outline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{255, 255, 0, 255});
+                draw_rect_outline(px - 1, py - 1, TILE_SIZE + 2, TILE_SIZE + 2, SDL_Color{255, 200, 0, 255});
+                draw_rect_outline(px - 2, py - 2, TILE_SIZE + 4, TILE_SIZE + 4, SDL_Color{255, 150, 0, 255});
+                
+                // Arrow image or text
+                SDL_Rect icon{px + TILE_SIZE/2 - 16, py - 36 - offset, 32, 32};
+                draw_texture("hand", icon);
+            }
+            
+            // Dialog Box
+            const int panel_w = 760;
+            const int panel_h = 300;
+            const int panel_x = (Map::WIDTH * TILE_SIZE - panel_w) / 2;
+            const int panel_y = WINDOW_HEIGHT - panel_h - 20;
+            
+            fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 245});
+            draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
+            draw_rect_outline(panel_x + 4, panel_y + 4, panel_w - 8, panel_h - 8, SDL_Color{96, 70, 40, 255});
+            
+            // Draw NPC Portrait
+            if (texture("npc_seed")) {
+                SDL_Rect npc_rect{panel_x + 24, panel_y + 40, 160, 200}; // Adjust size as needed
+                draw_texture("npc_seed", npc_rect);
+            }
+            
+            draw_text(title, panel_x + 200, panel_y + 24, SDL_Color{255, 221, 132, 255}, panel_w - 230);
+            int y = panel_y + 70;
+            for (const auto& line : wrap_text(body, 42)) {
+                draw_text(line, panel_x + 200, y, SDL_Color{238, 230, 207, 255}, panel_w - 230);
+                y += 26;
+            }
+            
+            SDL_RenderPresent(renderer_);
+        };
+        
+        while (!next_step) {
+            draw_frame();
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_QUIT) {
+                    while(tutorial.is_active()) tutorial.advance();
+                    return;
+                }
+                if (event.type == SDL_KEYDOWN) {
+                    SDL_Keycode key = event.key.keysym.sym;
+                    if (key == SDLK_RETURN || key == SDLK_SPACE || key == SDLK_ESCAPE || key == SDLK_KP_ENTER) {
+                        next_step = true;
+                    }
+                }
+                if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                    next_step = true;
+                }
+            }
+            SDL_Delay(16);
+        }
+        
+        tutorial.advance();
+    }
+}
+
 int GuiRenderer::show_shop_selector(const std::string& title,
                                     const std::string& left_title,
                                     const std::string& right_title,
@@ -559,6 +709,7 @@ int GuiRenderer::show_shop_selector(const std::string& title,
                                     const std::string& info_message,
                                     int cancel_id) {
     if (!ready_ || !window_ || !renderer_) return cancel_id;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
 
     const int panel_w = 1020;
     const int panel_h = 690;
@@ -583,6 +734,10 @@ int GuiRenderer::show_shop_selector(const std::string& title,
     int drag_anchor_scroll = 0;
 
     auto draw_dialog = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 120});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -759,6 +914,7 @@ int GuiRenderer::show_action_panel(const std::string& title,
                                    const std::vector<GuiActionEntry>& recipes,
                                    int cancel_id) {
     if (!ready_ || !window_ || !renderer_) return cancel_id;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
 
     const int panel_w = 1040;
     const int panel_h = 680;
@@ -773,8 +929,6 @@ int GuiRenderer::show_action_panel(const std::string& title,
     int selected = 0;
 
     auto draw_locked_overlay = [&](int x, int y, int w, int h) {
-        // 폰트/터미널 환경에 따라 LOCK 텍스트와 촘촘한 대각선 패턴이 깨져 보일 수 있어
-        // 단순한 반투명 오버레이 + 벡터 자물쇠 아이콘으로 통일한다.
         fill_rect(x, y, w, h, SDL_Color{0, 0, 0, 105});
         fill_rect(x, y, 6, h, SDL_Color{118, 118, 118, 220});
 
@@ -795,6 +949,10 @@ int GuiRenderer::show_action_panel(const std::string& title,
     };
 
     auto draw_panel = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 120});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -902,6 +1060,7 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
                                        const std::vector<GuiSkillNode>& nodes,
                                        int cancel_id) {
     if (!ready_ || !window_ || !renderer_ || nodes.empty()) return cancel_id;
+    std::shared_ptr<SDL_Texture> bg_tex(capture_screen_to_texture(), [](SDL_Texture* t) { if(t) SDL_DestroyTexture(t); });
 
     const int panel_w = 1040;
     const int panel_h = 680;
@@ -1102,8 +1261,12 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
     };
 
     auto draw_panel = [&]() {
+        if (bg_tex) {
+            SDL_RenderClear(renderer_);
+            SDL_RenderCopy(renderer_, bg_tex.get(), NULL, NULL);
+        }
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 120});
-        fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{42, 35, 27, 250});
+        fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
         draw_text(title, panel_x + margin, panel_y + 20, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
 
@@ -1307,9 +1470,19 @@ void GuiRenderer::draw_rect_outline(int x, int y, int w, int h, SDL_Color color)
 
 bool GuiRenderer::load_font() {
     const char* candidates[] = {
+        // Cross-platform bundled font
+        "assets/NanumGothic.ttf",
+        // macOS CJK Fonts
+        "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        // Windows CJK Fonts
+        "C:\\Windows\\Fonts\\malgun.ttf",
+        "C:\\Windows\\Fonts\\msgothic.ttc",
+        // Linux CJK Fonts
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        // Fallbacks
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
     };
@@ -1563,7 +1736,7 @@ void GuiRenderer::update_window_title(const Player& player, const std::string& m
     SDL_SetWindowTitle(window_, "농장 마을");
 }
 
-void GuiRenderer::draw(const Player& player, const Map& map, const std::string& message) {
+void GuiRenderer::draw(const Player& player, const Map& map, const std::string& message, bool present) {
     if (!ready_) return;
     SDL_SetRenderDrawColor(renderer_, 18, 24, 20, 255);
     SDL_RenderClear(renderer_);
@@ -1631,10 +1804,13 @@ void GuiRenderer::draw(const Player& player, const Map& map, const std::string& 
 
     draw_side_panel(player, message);
     update_window_title(player, message);
-    SDL_RenderPresent(renderer_);
+
+    if (present) {
+        SDL_RenderPresent(renderer_);
+    }
 }
 
-void GuiRenderer::draw_barn(const Player& player, const BarnSystem& barn, const std::string& message) {
+void GuiRenderer::draw_barn(const Player& player, const BarnSystem& barn, const std::string& message, bool present) {
     SDL_SetRenderDrawColor(renderer_, 22, 20, 18, 255);
     SDL_RenderClear(renderer_);
 
@@ -1738,7 +1914,9 @@ void GuiRenderer::draw_barn(const Player& player, const BarnSystem& barn, const 
     draw_texture(player_key, pdst);
 
     draw_side_panel(player, std::string("[축사] ") + message + "\nWASD 이동 / T 가축 상호작용 / J 축사 관리 / EXIT에서 J로 나가기");
-    SDL_RenderPresent(renderer_);
+    if (present) {
+        SDL_RenderPresent(renderer_);
+    }
 }
 
 int GuiRenderer::fishing_hit_width_for_level(int level) const {

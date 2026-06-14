@@ -8,6 +8,7 @@
 #include "WorkshopSystem.h"
 #include "EventSystem.h"
 #include "BarnSystem.h"
+#include "Tutorial.h"
 #include <string>
 #include <vector>
 
@@ -33,6 +34,7 @@ private:
     WorkshopSystem workshop_;
     EventSystem event_system_;
     BarnSystem barn_;
+    Tutorial tutorial_;
     GameArea current_area_;
     int farm_return_x_;
     int farm_return_y_;
@@ -70,6 +72,7 @@ private:
     void show_str_tree();
     void show_int_tree();
     void show_luk_tree();
+    void show_tutorial();
 
 #ifdef FARM_GUI
     void handle_gui_market();
@@ -83,5 +86,6 @@ private:
     void show_gui_skill_tree();
     std::vector<std::string> current_event_status_lines() const;
     void sync_gui_event_status();
+    void show_gui_tutorial();
 #endif
 };
