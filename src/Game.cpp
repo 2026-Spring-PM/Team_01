@@ -1232,7 +1232,7 @@ void Game::handle_gui_kitchen() {
     if (sel == 0) { renderer_.add_message("주방 이용을 취소했습니다."); return; }
     std::string msg;
     if ((sel >= 1 && sel <= 12) || (sel >= 14 && sel <= 16)) {
-        int qty = gui_renderer_.prompt_quantity("요리 수량", "몇 개를 요리하시겠습니까?", 1, 99);
+        int qty = gui_renderer_.prompt_quantity("요리 수량", "몇 개를 요리하시겠습니까?", 99, 1);
         if (qty <= 0) { renderer_.add_message("요리를 취소했습니다."); return; }
         int success_count = 0;
         std::string last_msg;

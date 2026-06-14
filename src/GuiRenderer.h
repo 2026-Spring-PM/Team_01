@@ -55,7 +55,7 @@ public:
     bool is_ready() const { return ready_; }
     bool poll_input(char& input);
     bool needs_animation_frame(const Player& player) const;
-    void draw(const Player& player, const Map& map, const std::string& message);
+    void draw(const Player& player, const Map& map, const std::string& message, bool present = true);
     void draw_barn(const Player& player, const BarnSystem& barn, const std::string& message);
     void set_event_status(const std::vector<std::string>& status_lines) { event_status_lines_ = status_lines; }
 

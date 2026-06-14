@@ -146,19 +146,24 @@ int Player::get_true_stamina_max() const {
 
 int Player::get_harvest_stamina_cost() const {
     switch (hoe_grade_) {
-        case 1: return 4;
-        case 2: return 3;
-        case 3: return 2;
-        default: return 5;
+        case 1: return 2;
+        case 2: return 1;
+        case 3: return 1;
+        default: return 2;
     }
 }
 
 int Player::get_fishing_stamina_cost() const {
-    return rod_grade_ >= 3 ? 3 : 5;
+    return rod_grade_ >= 3 ? 1 : 2;
 }
 
 int Player::get_mining_stamina_cost() const {
-    return pick_grade_ >= 3 ? 3 : 5;
+    switch (pick_grade_) {
+        case 1: return 2;
+        case 2: return 1;
+        case 3: return 1;
+        default: return 2;
+    }
 }
 
 bool Player::has_str_node(int node_id) const {

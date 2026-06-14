@@ -344,7 +344,6 @@ int GuiRenderer::show_choice(const std::string& title,
                     if (SDL_PointInRect(&pt, &r)) return buttons[i].first;
                 }
             }
-            break;
         }
     }
 }
@@ -490,7 +489,6 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
                 if (SDL_PointInRect(&pt, &all)) { SDL_StopTextInput(); return max_quantity; }
                 if (SDL_PointInRect(&pt, &cancel)) { SDL_StopTextInput(); return 0; }
             }
-            break;
         }
     }
 }
@@ -551,7 +549,6 @@ void GuiRenderer::show_inventory(const Player& player) {
                 SDL_Rect close{panel_x + panel_w - 170, panel_y + panel_h - 68, 130, 42};
                 if (SDL_PointInRect(&pt, &close)) return;
             }
-            break;
         }
     }
 }
@@ -568,7 +565,7 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
     const SDL_Rect skip_rect{panel_x + 50, panel_y + panel_h - 72, 160, 46};
 
     auto draw_dialog = [&]() {
-        draw(player, map, "튜토리얼 진행 중...");
+        draw(player, map, "튜토리얼 진행 중...", false);
         fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 145});
         fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
@@ -638,7 +635,6 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
                     break;
                 }
             }
-            break;
         }
     }
 }
@@ -839,7 +835,6 @@ int GuiRenderer::show_shop_selector(const std::string& title,
                 scroll_y = std::max(0, std::min(scroll_y, max_scroll));
                 break;
             }
-            break;
         }
     }
 }
@@ -1069,7 +1064,6 @@ int GuiRenderer::show_action_panel(const std::string& title,
                     }
                 }
             }
-            break;
         }
     }
 }
@@ -1412,7 +1406,6 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
                     }
                 }
             }
-            break;
         }
     }
 }
@@ -1755,7 +1748,7 @@ bool GuiRenderer::needs_animation_frame(const Player& player) const {
     return std::fabs(visual_x_ - target_x) > 0.01 || std::fabs(visual_y_ - target_y) > 0.01;
 }
 
-void GuiRenderer::draw(const Player& player, const Map& map, const std::string& message) {
+void GuiRenderer::draw(const Player& player, const Map& map, const std::string& message, bool present) {
     if (!ready_) return;
     SDL_SetRenderDrawColor(renderer_, 18, 24, 20, 255);
     SDL_RenderClear(renderer_);
@@ -1822,7 +1815,7 @@ void GuiRenderer::draw(const Player& player, const Map& map, const std::string& 
     draw_texture(player_key, player_dst);
 
     draw_side_panel(player, message);
-    SDL_RenderPresent(renderer_);
+    if (present) SDL_RenderPresent(renderer_);
 }
 
 void GuiRenderer::draw_barn(const Player& player, const BarnSystem& barn, const std::string& message) {
