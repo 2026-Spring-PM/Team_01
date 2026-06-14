@@ -92,6 +92,11 @@ public:
 
     bool has_sold_monster_food() const { return sold_monster_food_; }
     void set_sold_monster_food(bool sold) { sold_monster_food_ = sold; }
+    bool has_made_monster_food() const { return made_monster_food_; }
+    void set_made_monster_food(bool v) { made_monster_food_ = v; }
+    // 신용도가 처음으로 71 미만으로 떨어진 적 있는지 (대사/안내 변화 트리거)
+    bool trust_ever_dropped() const { return trust_ever_dropped_; }
+    void mark_trust_dropped() { trust_ever_dropped_ = true; }
     int get_shop_trust() const { return shop_trust_; }
     void lower_shop_trust(int amount);
     void restore_shop_trust(int amount);
@@ -129,6 +134,8 @@ private:
     bool int_nodes_[9];
     bool luk_nodes_[7];
     bool sold_monster_food_;
+    bool made_monster_food_;   // 처음으로 괴식을 만든 적 있는지
+    bool trust_ever_dropped_;  // 신용도가 최고(71+) 에서 내려간 적 있는지
     int shop_trust_;
     int daily_sales_income_;
     int pending_dividend_;

@@ -228,13 +228,7 @@ void Game::handle_action() {
 #ifdef FARM_GUI
             if (gui_mode_) { handle_gui_market(); break; }
 #endif
-            system("clear");
-            std::cout << "[상점]\n1. 구매\n2. 판매\n0. 나가기\n>> " << std::flush;
-            {
-                char sel = getch();
-                if (sel == '1') market_.show_buy_shop(player_);
-                else if (sel == '2') market_.show_sell_shop(player_);
-            }
+            show_market_menu();
             renderer_.add_message("상점 이용을 마쳤습니다.");
             break;
         case TileType::KITCHEN:
@@ -350,11 +344,7 @@ void Game::handle_facility_by_name(const std::string& name) {
 #ifdef FARM_GUI
         if (gui_mode_) { handle_gui_market(); return; }
 #endif
-        system("clear");
-        std::cout << "[상점]\n1. 구매\n2. 판매\n0. 나가기\n>> " << std::flush;
-        char sel = getch();
-        if (sel == '1') market_.show_buy_shop(player_);
-        else if (sel == '2') market_.show_sell_shop(player_);
+        show_market_menu();
         renderer_.add_message("상점 이용을 마쳤습니다.");
         return;
     }
@@ -708,6 +698,34 @@ void Game::show_luk_tree() {
     }
 }
 
+void Game::show_market_menu() {
+    // 신용도 0 → 입장 거절 대사 + 선물하기만 가능
+    if (player_.get_shop_trust() <= 0) {
+        system("clear");
+        std::cout << "\"더는 못 참아! 당장 내 상점에서 나가! 자네가 가져오는 건 이제 냄새만 맡아도 속이 메스꺼우니, 꼴도 보기 싫으니까 당장 꺼지게!\"\n\n";
+        std::cout << "1. 선물하기\n0. 나가기\n>> " << std::flush;
+        char sel = getch();
+        if (sel == '1') market_.show_gift_shop(player_, kitchen_.get_level());
+        return;
+    }
+
+    while (true) {
+        system("clear");
+        std::cout << "[상점] 신용도: " << player_.get_shop_trust() << "/100\n";
+        std::cout << "1. 구매\n2. 판매\n3. 괴식 판매\n4. 선물하기\n0. 나가기\n>> " << std::flush;
+
+        char sel = getch();
+        if (sel == '0') return;
+        if (sel == '1') market_.show_buy_shop(player_);
+        else if (sel == '2') market_.show_sell_shop(player_);
+        else if (sel == '3') market_.show_monster_food_shop(player_, kitchen_.get_level());
+        else if (sel == '4') market_.show_gift_shop(player_, kitchen_.get_level());
+
+        // 판매 도중 신용도 0이 됐으면 자동 퇴장
+        if (player_.get_shop_trust() <= 0) return;
+    }
+}
+
 void Game::quit() {
 #ifdef FARM_GUI
     if (gui_mode_) {
@@ -926,6 +944,108 @@ void Game::show_tutorial() {
 
 #ifdef FARM_GUI
 
+bool Game::choose_gui_free_cook_ingredients(std::vector<ItemType>& ingredients) {
+    // 괴식 미발견: 자유 요리 모드 (예상 결과 ???)
+    // 괴식 발견 후: 괴식 제작 모드 (예상 결과 등급 표시)
+    bool already_made = player_.has_made_monster_food();
+
+    struct FreeIngOption {
+        ItemType item;
+        const char* name;
+        const char* icon;
+        int rarity;
+    };
+    static const FreeIngOption options[] = {
+        {ItemType::POTATO,       "감자",   "item_potato",   1},
+        {ItemType::CARROT,       "당근",   "item_carrot",   1},
+        {ItemType::EGG,          "달걀",   "egg",           1},
+        {ItemType::FISH_MACKEREL,"고등어", "fish_mackerel", 1},
+        {ItemType::WHEAT,        "밀",     "item_wheat",    2},
+        {ItemType::RICE,         "쌀",     "item_rice",     2},
+        {ItemType::PORK,         "돼지고기","pork",          2},
+        {ItemType::FISH_FLATFISH,"광어",   "fish_flatfish", 2},
+        {ItemType::APPLE,        "사과",   "item_apple",    3},
+        {ItemType::MILK,         "우유",   "milk",          3},
+        {ItemType::FISH_TUNA,    "참치",   "fish_tuna",     3},
+    };
+
+    auto selected_count = [&](ItemType item) {
+        int count = 0;
+        for (ItemType s : ingredients) if (s == item) ++count;
+        return count;
+    };
+
+    const std::string panel_title = already_made ? "괴식 제작" : "자유 요리";
+
+    while (true) {
+        int rarity_sum = 0;
+        for (ItemType item : ingredients) {
+            for (const auto& opt : options)
+                if (opt.item == item) { rarity_sum += opt.rarity; break; }
+        }
+
+        std::ostringstream body;
+        if (already_made) {
+            body << "괴식은 정식 레시피가 아닌 재료 2~6개로 만듭니다.\n";
+        } else {
+            body << "재료를 자유롭게 선택하여 요리해봅시다!\n";
+        }
+        body << "선택한 재료 (" << ingredients.size() << "/6): ";
+        if (ingredients.empty()) body << "없음";
+        for (ItemType item : ingredients) body << item_name(item) << " ";
+
+        // 예상 결과
+        if (already_made) {
+            if (ingredients.size() >= 2) {
+                std::string grade = rarity_sum <= 5 ? "하급" : (rarity_sum <= 10 ? "중급" : "고급");
+                body << "\n예상 결과: " << grade << " 괴식";
+            } else {
+                body << "\n예상 결과: 재료를 최소 2개 선택하세요.";
+            }
+        } else {
+            body << "\n예상 결과: ???";
+            if (ingredients.size() < 2) body << " (재료를 최소 2개 선택하세요)";
+        }
+
+        std::vector<GuiActionEntry> actions;
+        int id = 1;
+        if (ingredients.size() < 6) {
+            for (const auto& opt : options) {
+                int owned  = player_.count_item(opt.item);
+                int chosen = selected_count(opt.item);
+                if (owned <= chosen) continue;
+                std::ostringstream label;
+                if (already_made)
+                    label << "희귀도 " << opt.rarity << " / 남은 수량 " << (owned - chosen) << "개";
+                else
+                    label << "남은 수량 " << (owned - chosen) << "개";
+                actions.push_back({id, opt.name, label.str(), opt.icon, false});
+                ++id;
+            }
+        }
+        const std::string start_label = already_made ? "제작 시작" : "요리 시작";
+        const std::string start_sub   = already_made ? "선택한 재료로 괴식을 만듭니다." : "선택한 재료로 요리합니다.";
+        if (ingredients.size() >= 2) actions.push_back({100, start_label, start_sub, "kitchen", false});
+        if (!ingredients.empty())    actions.push_back({99, "선택 초기화", "선택한 재료를 모두 비웁니다.", "kitchen", false});
+        actions.push_back({0, "취소", "주방으로 돌아갑니다.", "kitchen", false});
+
+        std::vector<GuiActionEntry> recipes = actions;
+        int choice = gui_renderer_.show_action_panel(panel_title, body.str(), "선택 가능 재료", actions, recipes, 0);
+        if (choice == 0) return false;
+        if (choice == 100) return true;
+        if (choice == 99) { ingredients.clear(); continue; }
+
+        int cur_id = 1;
+        for (const auto& opt : options) {
+            int owned  = player_.count_item(opt.item);
+            int chosen = selected_count(opt.item);
+            if (owned <= chosen) continue;
+            if (choice == cur_id) { ingredients.push_back(opt.item); break; }
+            ++cur_id;
+        }
+    }
+}
+
 bool Game::choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredients) {
     struct MonsterIngredientOption {
         ItemType item;
@@ -1019,11 +1139,93 @@ bool Game::choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredient
     }
 }
 
+// ── GUI 상점용 신용도 헬퍼 ──────────────────────────────────────
+namespace {
+int gui_trust_tier(int trust) {
+    if (trust <= 0)  return 0;
+    if (trust <= 30) return 1;
+    if (trust <= 70) return 2;
+    return 3;
+}
+const char* gui_entry_line(int tier) {
+    switch (tier) {
+        case 3: return "\"우리 마을 최고의 농부 아닌가! 어서오게나.\"";
+        case 2: return "\"왔나. 필요한 물건 있으면 골라보게.\"";
+        case 1: return "\"또 너냐? 이 사기꾼 놈, 내 상점에서 얼른 나가!\"";
+        default: return "\"더는 못 참아! 당장 내 상점에서 나가!\n자네가 가져오는 건 이제 냄새만 맡아도 속이 메스꺼우니,\n꼴도 보기 싫으니까 당장 꺼지게!\"";
+    }
+}
+const char* gui_success_line(int tier) {
+    switch (tier) {
+        case 3: return "\"오, 이게 말로만 듣던 그 귀한 고급 요리란 말이지?\n자네가 만든 거니 의심 없이 비싸게 사지! 자, 여기 있네!\"";
+        case 2: return "\"음... 저번에 준 음식은 가족들이 먹고 배가 좀 아프다던데...\n이번 건 진짜 확실한 거 맞나? ...하긴, 눈빛을 보니\n거짓말을 하는 것 같진 않군. 이번 딱 한 번만 믿고 사 주겠네.\"";
+        case 1: return "\"자네가 가져온 건 쳐다보기도 싫네만...\n윽, 대체 뭘 넣었길래 이렇게 군침 도는 냄새가 나는 거지?\n이번 한 번만 속아 넘어가 줄 테니 당장 돈 받고 나가게!\"";
+        default: return "";
+    }
+}
+const char* gui_fail_line(int tier) {
+    switch (tier) {
+        case 3: return "\"음? 자네 실력답지 않게 오늘은 요리 모양새가 왜 이리 고약한가?\n아무리 자네라지만 이 상태인 걸 돈 주고 사 가긴 곤란하겠어.\n다음엔 제대로 만들어 오게나.\"";
+        case 2: return "\"잠깐, 이 냄새는 도저히 사람이 먹을 만한 게 아니잖아!\n자네 요즘 나한테 자꾸 이상한 걸 음식이라고 속여서\n밀어 넘기려는 것 같은데... 내 눈이 호락호락해 보이나?\"";
+        case 1: return "\"어디서 또 이 쓰레기를 음식이라고 속여 팔려고 해?!\n경찰에 신고하기 전에 당장 내 눈앞에서 치워!\n이제부터 자네가 가져오는 건 다 쓰레기로 볼 줄 알게!\"";
+        default: return "";
+    }
+}
+const char* gui_gift_line(int trust_restore, bool trust_was_reduced) {
+    if (trust_restore == 5) {
+        return trust_was_reduced
+            ? "\"음... 나한테 준 상처가 있으니 아직 완전히 풀린 건 아니네만,\n그래도 이렇게 챙겨주니 자네를 다시 보게 되는구만.\n잘 먹겠네. (신용도 소폭 상승)\""
+            : "\"어, 흠... 나를 주려고 가져온 건가? 고, 고맙네.\n갑자기 이런 걸 주다니... 혹시 나한테 무슨 할 말이라도 있는 건가?\n왠지 기분이 묘하게 좋아지는군!\"";
+    } else if (trust_restore == 10) {
+        return trust_was_reduced
+            ? "\"안 그래도 자네를 계속 의심하느라 마음이 복잡했는데,\n이 정성을 보니 자네가 확실히 믿음직스러워졌습니다.\n고맙게 받겠네. (신용도 크게 상승)\""
+            : "\"아니, 냄새부터 장난이 아니구만!\n자네, 혹시 매일 내 얼굴 보러 오려고 이렇게 정성을 들이는 건가?\n하하, 이 아저씨 인기가 아직 안 죽었군! 기분이 정말 좋아졌다네!\"";
+    } else {
+        return trust_was_reduced
+            ? "\"이런 엄청난 요리를 나한테 그냥 주다니...\n내가 그동안 자네를 너무 매정하게 몰아세웠나 보군.\n예전처럼 다시 잘 지내보세나. (신용도 대폭 상승)\""
+            : "\"맙소사, 이건 국왕 부럽지 않은 최고의 만찬이군!\n...잠깐, 설마 자네 나를... 좋아하는 건가?!\n어흠, 아무리 그래도 우린 상인과 농부 사이일 뿐이네. 어쨌든 고맙네!\"";
+    }
+}
+} // namespace
+
 void Game::handle_gui_market() {
+    // ── 신용도 0: 추방 → 선물만 ─────────────────────────────────
+    if (player_.get_shop_trust() <= 0) {
+        int sel0 = gui_renderer_.show_npc_dialogue("npc_buyer",
+            std::string(gui_entry_line(0)) + "\n\n선물로 신용을 회복해야 다시 거래할 수 있습니다.",
+            {{1, "선물하기"}, {0, "나가기"}}, 0);
+        if (sel0 == 1) handle_gui_gift_shop();
+        renderer_.add_message("상점 이용을 마쳤습니다.");
+        return;
+    }
+
+    // ── 입장: NPC 사진 + 대사 + 메뉴 버튼을 한 화면에 ──────────
     while (true) {
-        int mode = gui_renderer_.show_choice("상점", "거래 방식을 선택하세요.", {{1, "구매"}, {2, "판매"}, {0, "뒤로"}}, 0);
+        if (player_.get_shop_trust() <= 0) {
+            gui_renderer_.show_npc_dialogue("npc_buyer", gui_entry_line(0),
+                {{0, "나가기"}}, 0);
+            renderer_.add_message("신용도가 0이 되어 상점에서 쫓겨났습니다.");
+            return;
+        }
+
+        int tier = gui_trust_tier(player_.get_shop_trust());
+
+        // 기본 2×2: 구매/판매/선물하기/나가기
+        // 괴식 판매 생기면 선물하기 앞에 추가 → 2+3 배치
+        std::vector<std::pair<int,std::string>> menu_btns;
+        menu_btns.push_back({1, "구매"});
+        menu_btns.push_back({2, "판매"});
+        if (player_.has_made_monster_food())
+            menu_btns.push_back({3, "괴식 판매"});
+        menu_btns.push_back({4, "선물하기"});
+        menu_btns.push_back({0, "나가기"});
+
+        int mode = gui_renderer_.show_npc_dialogue("npc_buyer",
+            gui_entry_line(tier), menu_btns, 0);
+
         if (mode == 0) { renderer_.add_message("상점을 닫았습니다."); return; }
 
+        // ── 1. 구매 ──────────────────────────────────────────
         if (mode == 1) {
             while (true) {
                 std::vector<GuiShopEntry> entries;
@@ -1036,30 +1238,25 @@ void Game::handle_gui_market() {
                     bool locked = player_.get_level() < item.required_level || trust_locked;
                     sub << price << "G";
                     if (price < item.buy_price) sub << " | INT 할인";
-            if (player_.get_level() < item.required_level) sub << " | 레벨 " << item.required_level;
+                    if (player_.get_level() < item.required_level) sub << " | 레벨 " << item.required_level;
                     if (trust_locked) sub << " | 신뢰도 제한";
                     entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), locked});
                 }
-                int choice = gui_renderer_.show_shop_selector("구매 상점", "인벤토리", "구매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 신뢰도가 낮으면 고급 품목이 잠깁니다.", 0);
-                if (choice <= 0) { renderer_.add_message("상점을 닫았습니다."); return; }
+                int choice = gui_renderer_.show_shop_selector("구매 상점", "인벤토리", "구매 가능 품목", entries, player_, "", 0);
+                if (choice <= 0) break;
 
-                const auto& item = items[choice - 1];
+                const auto& item = items[static_cast<std::size_t>(choice - 1)];
                 int price = player_.discounted_market_buy_price(item.buy_price);
                 int max_qty = price <= 0 ? 999 : player_.get_money() / price;
                 if (max_qty <= 0) {
-                    std::string msg = "골드가 부족합니다.";
-                    renderer_.add_message(msg);
-                    gui_renderer_.show_notice("구매 실패", msg);
+                    gui_renderer_.show_notice("구매 실패", "골드가 부족합니다.");
                     continue;
                 }
-
                 std::ostringstream qmsg;
                 qmsg << item.name << "을(를) 몇 개 구매할까요?\n"
-                     << "가격: " << price << "G | 보유: " << player_.count_item(item.item) << "\n"
-                     << "최대 수량: " << max_qty;
+                     << "가격: " << price << "G | 보유: " << player_.count_item(item.item) << "\n최대: " << max_qty;
                 int qty = gui_renderer_.prompt_quantity("구매 수량", qmsg.str(), max_qty, 1);
                 if (qty <= 0) { renderer_.add_message("구매를 취소했습니다."); continue; }
-
                 std::string msg;
                 market_.buy_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
                 renderer_.add_message(msg);
@@ -1067,6 +1264,7 @@ void Game::handle_gui_market() {
             }
         }
 
+        // ── 2. 일반 판매 (괴식 제외) ──────────────────────────
         if (mode == 2) {
             while (true) {
                 std::vector<GuiShopEntry> entries;
@@ -1076,39 +1274,211 @@ void Game::handle_gui_market() {
                     bool monster = item.item == ItemType::MONSTER_FOOD_LOW ||
                                    item.item == ItemType::MONSTER_FOOD_MID ||
                                    item.item == ItemType::MONSTER_FOOD_HIGH;
-                    int price = monster ? player_.monster_food_sell_price(item.sell_price) : item.sell_price;
+                    if (monster) continue;
                     std::ostringstream sub;
-                    sub << price << "G";
-                    if (monster) sub << " | 성공률 " << player_.monster_food_success_chance() << "%";
+                    sub << item.sell_price << "G";
                     if (player_.count_item(item.item) <= 0) sub << " | 보유 없음";
                     entries.push_back({static_cast<int>(i + 1), item.item, item.name, sub.str(), player_.count_item(item.item) <= 0});
                 }
-                int choice = gui_renderer_.show_shop_selector("판매 상점", "인벤토리", "판매 가능 품목", entries, player_, "신뢰도 " + std::to_string(player_.get_shop_trust()) + "/100. 몬스터 푸드는 실패 시 신뢰도가 내려갈 수 있습니다.", 0);
-                if (choice <= 0) { renderer_.add_message("상점을 닫았습니다."); return; }
+                int choice = gui_renderer_.show_shop_selector("판매 상점", "인벤토리", "판매 가능 품목", entries, player_, "", 0);
+                if (choice <= 0) break;
 
-                const auto& item = items[choice - 1];
+                const auto& item = market_.sell_items()[static_cast<std::size_t>(choice - 1)];
                 int max_qty = player_.count_item(item.item);
-                if (max_qty <= 0) {
-                    std::string msg = "이 아이템을 보유하고 있지 않습니다.";
-                    renderer_.add_message(msg);
-                    gui_renderer_.show_notice("판매 실패", msg);
-                    continue;
-                }
-
+                if (max_qty <= 0) { gui_renderer_.show_notice("판매 실패", "이 아이템을 보유하고 있지 않습니다."); continue; }
                 std::ostringstream qmsg;
-                qmsg << item.name << "을(를) 몇 개 판매할까요?\n"
-                     << "기본 가격: " << item.sell_price << "G | 보유: " << max_qty;
+                qmsg << item.name << "을(를) 몇 개 판매할까요?\n가격: " << item.sell_price << "G | 보유: " << max_qty;
                 int qty = gui_renderer_.prompt_quantity("판매 수량", qmsg.str(), max_qty, max_qty);
                 if (qty <= 0) { renderer_.add_message("판매를 취소했습니다."); continue; }
-
                 std::string msg;
                 market_.sell_item(player_, static_cast<std::size_t>(choice - 1), qty, msg);
                 renderer_.add_message(msg);
                 gui_renderer_.show_notice("판매 결과", msg);
             }
         }
+
+        // ── 3. 괴식 판매 ──────────────────────────────────────
+        if (mode == 3) {
+            handle_gui_monster_food_shop();
+            if (player_.get_shop_trust() <= 0) return;
+        }
+
+        // ── 4. 선물하기 ───────────────────────────────────────
+        if (mode == 4) {
+            handle_gui_gift_shop();
+        }
     }
 }
+
+void Game::handle_gui_monster_food_shop() {
+    const ItemType MFOODS[3] = {
+        ItemType::MONSTER_FOOD_LOW,
+        ItemType::MONSTER_FOOD_MID,
+        ItemType::MONSTER_FOOD_HIGH,
+    };
+    const char* MNAMES[3] = {"하급 몬스터 푸드", "중급 몬스터 푸드", "고급 몬스터 푸드"};
+    const int   MPRICES[3] = {200, 500, 2000};
+
+    while (true) {
+        if (player_.get_shop_trust() <= 0) {
+            gui_renderer_.show_notice("상점 주인", gui_entry_line(0));
+            renderer_.add_message("신용도가 0이 되어 상점에서 쫓겨났습니다.");
+            return;
+        }
+
+        std::vector<GuiShopEntry> entries;
+        for (int i = 0; i < 3; ++i) {
+            int have  = player_.count_item(MFOODS[i]);
+            int price = player_.monster_food_sell_price(MPRICES[i]);
+            std::ostringstream sub;
+            sub << price << "G";
+            if (have <= 0) sub << " | 보유 없음";
+            entries.push_back({i + 1, MFOODS[i], MNAMES[i], sub.str(), have <= 0});
+        }
+
+        int choice = gui_renderer_.show_shop_selector(
+            "괴식 판매", "인벤토리", "판매 가능 괴식", entries, player_, "", 0);
+        if (choice <= 0) return;
+
+        int idx     = choice - 1;
+        int max_qty = player_.count_item(MFOODS[idx]);
+        if (max_qty <= 0) { gui_renderer_.show_notice("판매 실패", "보유한 아이템이 없습니다."); continue; }
+
+        int price = player_.monster_food_sell_price(MPRICES[idx]);
+        std::ostringstream qmsg;
+        qmsg << MNAMES[idx] << "을(를) 몇 개 판매할까요?\n판매가: " << price << "G | 보유: " << max_qty;
+        int qty = gui_renderer_.prompt_quantity("판매 수량", qmsg.str(), max_qty, 1);
+        if (qty <= 0) { renderer_.add_message("판매를 취소했습니다."); continue; }
+
+        int chance = player_.monster_food_success_chance();
+        int success = 0, fail = 0, protected_fail = 0, total_gold = 0;
+        bool first_drop = !player_.trust_ever_dropped();
+
+        for (int i = 0; i < qty; ++i) {
+            player_.remove_item(MFOODS[idx], 1);
+            player_.set_sold_monster_food(true);
+
+            int cur_tier = gui_trust_tier(player_.get_shop_trust());
+
+            if (std::rand() % 100 < chance) {
+                ++success;
+                total_gold += price;
+                int drop = 3 + std::rand() % 5;
+                player_.lower_shop_trust(drop);
+
+                std::ostringstream result;
+                result << "✓ 판매 성공! (+" << price << "G)\n\n"
+                       << gui_success_line(cur_tier);
+                gui_renderer_.show_notice("판매 성공", result.str());
+            } else {
+                ++fail;
+                if (player_.protects_monster_food_failure()) {
+                    ++protected_fail;
+                    std::ostringstream result;
+                    result << "✗ 판매 실패\n능수능란한 언변으로 위기 모면!\n\n"
+                           << gui_fail_line(cur_tier);
+                    gui_renderer_.show_notice("판매 실패", result.str());
+                } else {
+                    int drop = 13 + std::rand() % 5;
+                    player_.lower_shop_trust(drop);
+                    std::ostringstream result;
+                    result << "✗ 판매 실패\n\n" << gui_fail_line(cur_tier);
+                    gui_renderer_.show_notice("판매 실패", result.str());
+                }
+            }
+
+            // 처음 신용도가 하락한 경우 → 안내 팝업 (NPC 없는 일반 공지)
+            if (first_drop && player_.trust_ever_dropped()) {
+                first_drop = false;
+                gui_renderer_.show_notice("알림",
+                    "괴식 판매를 시도할 경우, 상점 주인의 신용도가 떨어집니다.\n\n"
+                    "성공할 때보다 실패할 때 신용도가 더 크게 하락하며,\n"
+                    "신용도가 일정 수준 이하로 떨어지면 상점 이용이 제한됩니다.\n\n"
+                    "'선물하기' 기능을 통해 틈틈이 상점 주인의 신용도를 잘 관리해주세요!");
+            }
+
+            if (player_.get_shop_trust() <= 0) {
+                if (total_gold > 0) {
+                    player_.add_money(total_gold);
+                    player_.record_sale_income(total_gold);
+                    player_.add_exp(success * 2);
+                }
+                gui_renderer_.show_notice("상점 주인", gui_entry_line(0));
+                renderer_.add_message("신용도가 0이 되어 상점에서 쫓겨났습니다.");
+                return;
+            }
+        }
+
+        if (total_gold > 0) {
+            player_.add_money(total_gold);
+            player_.record_sale_income(total_gold);
+            player_.add_exp(success * 2);
+        }
+
+        std::ostringstream summary;
+        summary << "거래 결과: 성공 " << success << "회 / 실패 " << fail << "회\n"
+                << "획득 골드: +" << total_gold << "G";
+        if (protected_fail > 0)
+            summary << "\n능수능란한 언변으로 신용도 하락 " << protected_fail << "회 방어!";
+        gui_renderer_.show_notice("괴식 거래 결과", summary.str());
+        renderer_.add_message(summary.str());
+    }
+}
+
+void Game::handle_gui_gift_shop() {
+    bool trust_was_reduced = player_.get_shop_trust() < 100;
+    const auto& gifts = MarketSystem::GIFT_ITEMS;
+    int kl = kitchen_.get_level();
+
+    // 입장 대사: 신용도가 한 번이라도 하락한 적 있으면 '회복' 메시지
+    std::string intro_msg = trust_was_reduced
+        ? "선물로 상점 주인의 신용도를 회복합시다!"
+        : "선물로 상점 주인을 기쁘게 해줍시다!";
+
+    int intro_sel = gui_renderer_.show_npc_dialogue("npc_buyer", intro_msg, {{1, "확인"}, {0, "뒤로"}}, 0);
+    if (intro_sel != 1) return;
+
+    while (true) {
+        std::vector<GuiShopEntry> entries;
+        for (int i = 0; i < 3; ++i) {
+            if (kl < gifts[i].kitchen_level_required) continue;
+            int have = player_.count_item(gifts[i].item);
+            std::ostringstream sub;
+            // 신용도 수치 대신 체감 표현
+            if (gifts[i].trust_restore <= 5)       sub << "신뢰도 소폭 상승";
+            else if (gifts[i].trust_restore <= 10)  sub << "신뢰도 크게 상승";
+            else                                    sub << "신뢰도 대폭 상승";
+            if (have <= 0) sub << " | 보유 없음";
+            entries.push_back({i + 1, gifts[i].item, gifts[i].name, sub.str(), have <= 0});
+        }
+
+        if (entries.empty()) {
+            gui_renderer_.show_notice("선물하기", "(주방을 업그레이드하면 선물할 수 있는 음식이 생깁니다.)");
+            return;
+        }
+
+        int choice = gui_renderer_.show_shop_selector("선물하기", "인벤토리", "선물 가능 음식", entries, player_, "", 0);
+        if (choice <= 0) return;
+
+        int gift_idx = choice - 1;
+        const GiftItem& g = gifts[gift_idx];
+
+        if (player_.count_item(g.item) <= 0) {
+            gui_renderer_.show_notice("선물 실패", "보유한 " + g.name + "이(가) 없습니다.");
+            continue;
+        }
+
+        player_.remove_item(g.item, 1);
+        player_.restore_shop_trust(g.trust_restore);
+
+        std::ostringstream result;
+        result << gui_gift_line(g.trust_restore, trust_was_reduced);
+        gui_renderer_.show_npc_dialogue("npc_buyer", result.str(), {{0, "확인"}}, 0);
+        renderer_.add_message(g.name + " 선물! 신뢰도 상승");
+        trust_was_reduced = player_.get_shop_trust() < 100;
+    }
+}
+
 
 
 void Game::handle_gui_farm(Tile& tile) {
@@ -1118,28 +1488,34 @@ void Game::handle_gui_farm(Tile& tile) {
         body << "심을 씨앗을 선택하세요.\n"
              << "감자 씨앗: " << player_.count_item(ItemType::SEED_POTATO) << "\n"
              << "당근 씨앗: " << player_.count_item(ItemType::SEED_CARROT) << "\n"
-             << "밀 씨앗: " << player_.count_item(ItemType::SEED_WHEAT) << "\n"
-             << "쌀 씨앗: " << player_.count_item(ItemType::SEED_RICE) << "\n"
+             << "밀 씨앗: "   << player_.count_item(ItemType::SEED_WHEAT) << "\n"
+             << "쌀 씨앗: "   << player_.count_item(ItemType::SEED_RICE) << "\n"
              << "사과 묘목: " << player_.count_item(ItemType::SEED_APPLE);
-        int crop_id = gui_renderer_.show_choice("농경지", body.str(), {{1, "감자"}, {2, "당근"}, {3, "밀"}, {4, "쌀"}, {5, "사과"}, {0, "취소"}}, 0);
+        int crop_id = gui_renderer_.show_choice("씨앗 심기", body.str(), {{1, "감자"}, {2, "당근"}, {3, "밀"}, {4, "쌀"}, {5, "사과"}, {0, "취소"}}, 0);
         if (crop_id == 0) {
             renderer_.add_message("씨앗 심기를 취소했습니다.");
             return;
         }
         bool ok = CropSystem::plant_crop(player_, tile, crop_id, msg);
         renderer_.add_message(msg);
-        if (!ok) gui_renderer_.show_notice("농경지", msg);
+        if (!ok) gui_renderer_.show_notice("씨앗 심기", msg);
         return;
     }
 
+    // 작물 이름 결정
+    static const char* CROP_NAMES[] = {"", "감자", "당근", "밀", "쌀", "사과나무"};
+    std::string crop_title = (tile.crop_id >= 1 && tile.crop_id <= 5)
+        ? CROP_NAMES[tile.crop_id] : "작물";
+
     std::ostringstream body;
     body << "성장: " << tile.crop_progress << "/" << tile.crop_max_progress << "일\n";
-    if (tile.crop_progress < tile.crop_max_progress) body << "작물이 아직 자라는 중입니다.";
+    if (tile.crop_progress < tile.crop_max_progress) body << "아직 자라는 중입니다.";
+    else body << "수확할 수 있습니다!";
     std::vector<std::pair<int, std::string>> buttons{{1, "수확"}};
     if (event_system_.is_drought_active()) buttons.push_back({2, "물 주기"});
     buttons.push_back({9, "작물 제거"});
     buttons.push_back({0, "취소"});
-    int sel = gui_renderer_.show_choice("농경지", body.str(), buttons, 0);
+    int sel = gui_renderer_.show_choice(crop_title, body.str(), buttons, 0);
     if (sel == 1) {
         CropSystem::harvest_crop(player_, tile, msg);
         renderer_.add_message(msg);
@@ -1149,7 +1525,7 @@ void Game::handle_gui_farm(Tile& tile) {
     else if (sel == 9) remove_crop_from_tile(tile, msg);
     else msg = "작업을 취소했습니다.";
     renderer_.add_message(msg);
-    if (sel != 0) gui_renderer_.show_notice("농경지 결과", msg);
+    if (sel != 0) gui_renderer_.show_notice(crop_title + " 결과", msg);
 }
 
 
@@ -1224,6 +1600,9 @@ void Game::handle_gui_kitchen() {
         const bool lv3_locked = kitchen_.get_level() < 3;
         const bool lv4_locked = kitchen_.get_level() < 4;
         const bool upgrade_locked = kitchen_.get_level() >= 4;
+
+        // 괴식을 만든 적 있으면 '괴식 제작', 아니면 '자유 요리'
+        bool already_made = player_.has_made_monster_food();
         std::vector<GuiActionEntry> actions{
             {1, "감자 수프", "감자 2", "food_potato_soup", false},
             {2, "당근 달걀 롤", "당근 2 + 달걀", "food_carrot_egg_roll", false},
@@ -1238,7 +1617,10 @@ void Game::handle_gui_kitchen() {
             {11, "특선 하이라이스", "레벨 4 / 쌀 2 + 당근 2 + 돼지고기 + 우유", "food_hailight_rice", lv4_locked},
             {12, "사과 감자 무스 케이크", "레벨 4 / 사과 2 + 밀 2 + 감자 2 + 우유", "food_apple_potato_cake", lv4_locked},
             {13, upgrade_locked ? "주방 최고 레벨" : "주방 업그레이드", upgrade_locked ? "더 이상 업그레이드할 수 없습니다." : "골드와 플레이어 레벨 필요", "kitchen", upgrade_locked},
-            {14, "괴식 조합", "정식 레시피가 아닌 재료 2~6개 선택", "monster_food_mid", false}
+            // 자유 요리 / 괴식 제작
+            already_made
+                ? GuiActionEntry{14, "괴식 제작", "정식 레시피가 아닌 재료 2~6개 선택", "monster_food_mid", false}
+                : GuiActionEntry{14, "자유 요리", "자유롭게 요리해봅시다!", "bag", false}
         };
         std::vector<GuiActionEntry> recipes = actions;
 
@@ -1247,23 +1629,54 @@ void Game::handle_gui_kitchen() {
         std::string msg;
         if (sel == 14) {
             std::vector<ItemType> ingredients;
-            if (!choose_gui_monster_food_ingredients(ingredients)) {
-                renderer_.add_message("괴식 조합을 취소했습니다.");
+            const std::string mode_name = already_made ? "괴식 제작" : "자유 요리";
+            if (!choose_gui_free_cook_ingredients(ingredients)) {
+                renderer_.add_message(mode_name + "을 취소했습니다.");
                 continue;
             }
 
             std::string recipe_name = kitchen_.get_recipe_name(ingredients);
             if (!recipe_name.empty()) {
-                msg = "선택한 조합은 정식 레시피(" + recipe_name + ")입니다. 괴식은 레시피와 다른 조합만 가능합니다.";
+                msg = "선택한 조합은 정식 레시피(" + recipe_name + ")입니다.\n레시피에 있는 요리는 자유로운 요리가 아닙니다!";
+                gui_renderer_.show_notice(mode_name + " 결과", msg);
             } else {
                 kitchen_.cook(player_, ingredients, msg);
+                // 희귀도 합 문구 제거
+                std::string display_msg = msg;
+                auto pos = display_msg.find(" 희귀도 합 ");
+                if (pos != std::string::npos) display_msg = display_msg.substr(0, pos) + " 완성!";
+
+                gui_renderer_.show_notice(mode_name + " 결과", display_msg);
+
+                // 괴식 최초 생성 튜토리얼
+                if (!player_.has_made_monster_food()) {
+                    // 괴식 아이템이 인벤에 있으면 괴식을 만든 것
+                    bool made = player_.count_item(ItemType::MONSTER_FOOD_LOW) > 0 ||
+                                player_.count_item(ItemType::MONSTER_FOOD_MID) > 0 ||
+                                player_.count_item(ItemType::MONSTER_FOOD_HIGH) > 0;
+                    if (made) {
+                        player_.set_made_monster_food(true);
+                        // 2페이지 튜토리얼 (NPC 사진 없음)
+                        gui_renderer_.show_notice("괴식을 만들었습니다!",
+                            "레시피에 없는 조합으로 요리하면 '괴식'을 만들 수 있습니다.\n"
+                            "괴식은 넣은 재료의 희귀도 합에 따라 하급, 중급, 상급 괴식으로 구분됩니다.\n\n"
+                            "상점에서 괴식을 팔 경우, 확률에 따라 판매를 성공할 수도, 실패할 수도 있습니다.\n"
+                            "성공할 경우 일반 음식에 비해 막대한 돈을 얻을 수 있지만,\n"
+                            "실패할 경우 돈을 얻지 못한 채 괴식도 잃게 됩니다.");
+                        gui_renderer_.show_notice("INT 스킬 트리의 히든 가지가 해금되었습니다!",
+                            "INT 스킬 트리의 히든 가지인 '몬스터 푸드 가지'를 통해\n"
+                            "괴식 판매 성공률, 괴식 판매 가격 등을 높일 수 있습니다.\n\n"
+                            "화려한 말솜씨로 상점 주인의 눈을 속여,\n"
+                            "주방의 쓰레기를 황금으로 바꾸는 영악한 사기꾼이 되어보세요.");
+                    }
+                }
             }
         } else {
             kitchen_.perform_action(player_, sel, msg);
+            gui_renderer_.show_notice("주방 결과", msg);
         }
         sync_facility_level("주방", kitchen_.get_level());
         renderer_.add_message(msg);
-        gui_renderer_.show_notice("주방 결과", msg);
     }
 }
 void Game::handle_gui_workshop() {
@@ -1348,14 +1761,15 @@ void Game::show_gui_inventory() {
 }
 
 void Game::show_gui_skill_tree() {
+    bool monster_unlocked = player_.has_made_monster_food();
     std::ostringstream intro;
     intro << "보유 스킬 포인트: " << player_.get_skill_points()
           << "\n원하는 계열을 선택하면 세부 노드와 선행 조건을 볼 수 있습니다."
           << "\nSTR: 체력과 광산 안정성"
-          << "\nINT: 제작/거래와 몬스터 푸드"
+          << "\nINT: 제작/거래" << (monster_unlocked ? "와 괴식 판매" : "")
           << "\nLUK: 수확, 축산, 낚시, 요리 행운";
     int tree = gui_renderer_.show_choice("스킬 트리", intro.str(),
-        {{1, "STR 체력/채굴"}, {2, "INT 제작/거래"}, {3, "LUK 수확/행운"}}, 0);
+        {{1, "STR 체력/채굴"}, {2, monster_unlocked ? "INT 제작/거래/괴식" : "INT 제작/거래"}, {3, "LUK 수확/행운"}}, 0);
     if (tree == 0) {
         renderer_.add_message("스킬 트리를 닫았습니다.");
         return;
@@ -1385,7 +1799,10 @@ void Game::show_gui_skill_tree() {
         };
     } else if (tree == 2) {
         title = "INT 스킬 트리";
-        status = "제작/거래 경제 가지와 몬스터 푸드 가지로 나뉩니다. 노드를 클릭해 효과와 선행 조건을 확인하세요.";
+        bool monster_unlocked = player_.has_made_monster_food();
+        status = monster_unlocked
+            ? "제작/거래 경제 가지와 괴식 판매 가지로 나뉩니다. 노드를 클릭해 효과와 선행 조건을 확인하세요."
+            : "제작/거래 경제 가지입니다. 노드를 클릭해 효과와 선행 조건을 확인하세요.";
         auto learned = [&](int id) { return player_.has_int_node(id); };
         auto can = [&](int id) {
             if (id == 1 || id == 5) return true;
@@ -1398,11 +1815,14 @@ void Game::show_gui_skill_tree() {
             {2, 105, 158, "2 재무 설계", "하루 시작 시 보유 골드의 1%를 이자로 받습니다. 하루 최대 100G입니다. 필요: 공정 최적화.", "coin", learned(2), !learned(2) && !can(2), {1}},
             {3, 105, 268, "3 할인 감각", "상점 구매 가격이 10% 감소합니다. 필요: 재무 설계.", "shop_icon", learned(3), !learned(3) && !can(3), {2}},
             {4, 105, 378, "4 협동 조합", "하루 판매 수익의 10%를 다음 날 배당금으로 예약합니다. 필요: 할인 감각.", "coin", learned(4), !learned(4) && !can(4), {3}},
-            {5, 425, 48, "5 몬스터 조리", "몬스터 푸드 판매 가격이 10% 증가합니다. 괴식 가지의 시작 노드입니다.", "kitchen", learned(5), !learned(5) && !can(5), {}},
-            {6, 425, 158, "6 제조 전문가", "몬스터 푸드 판매 성공률이 20% 증가합니다. 필요: 몬스터 조리.", "kitchen", learned(6), !learned(6) && !can(6), {5}},
-            {7, 425, 268, "7 손실 방지", "몬스터 푸드 판매 실패 시 50% 확률로 상점 신뢰도 하락을 막습니다. 필요: 제조 전문가.", "hand", learned(7), !learned(7) && !can(7), {6}},
-            {8, 425, 378, "8 관리 루틴", "몬스터 푸드 판매 성공률이 추가로 20% 증가합니다. 필요: 손실 방지.", "level", learned(8), !learned(8) && !can(8), {7}}
         };
+        // 괴식을 만든 뒤에만 괴식 판매 가지 표시
+        if (monster_unlocked) {
+            nodes.push_back({5, 425, 48, "5 몬스터 조리", "괴식 판매 가격이 10% 증가합니다. 괴식 판매 가지의 시작 노드입니다.", "kitchen", learned(5), !learned(5) && !can(5), {}});
+            nodes.push_back({6, 425, 158, "6 제조 전문가", "괴식 판매 성공률이 20% 증가합니다. 필요: 몬스터 조리.", "kitchen", learned(6), !learned(6) && !can(6), {5}});
+            nodes.push_back({7, 425, 268, "7 손실 방지", "괴식 판매 실패 시 50% 확률로 상점 신뢰도 하락을 막습니다. 필요: 제조 전문가.", "hand", learned(7), !learned(7) && !can(7), {6}});
+            nodes.push_back({8, 425, 378, "8 관리 루틴", "괴식 판매 성공률이 추가로 30% 증가합니다. 필요: 손실 방지.", "level", learned(8), !learned(8) && !can(8), {7}});
+        }
     } else {
         title = "LUK 스킬 트리";
         status = "수확, 축산, 낚시, 요리에 보너스를 주는 행운 계열입니다. 원하는 노드를 클릭하면 자세한 효과가 표시됩니다.";

@@ -63,6 +63,14 @@ public:
                     const std::string& message,
                     const std::vector<std::pair<int, std::string>>& buttons,
                     int cancel_id = 0);
+    // NPC 사진 + 대사 + 버튼 통합 다이얼로그 (npc_key: 텍스처 키)
+    int show_npc_dialogue(const std::string& npc_key,
+                          const std::string& dialogue,
+                          const std::vector<std::pair<int, std::string>>& buttons,
+                          int cancel_id = 0);
+    // 두 페이지짜리 튜토리얼 팝업 (npc_buyer)
+    void show_npc_tutorial(const std::string& npc_key,
+                           const std::vector<std::pair<std::string,std::string>>& pages);
     bool confirm(const std::string& title, const std::string& message);
     void show_notice(const std::string& title, const std::string& message);
     void show_event_popup(const std::string& title, const std::string& message);
@@ -125,7 +133,7 @@ private:
     void draw_rect_outline(int x, int y, int w, int h, SDL_Color color);
     void draw_text(const std::string& text, int x, int y, SDL_Color color, int max_width = 0);
     void clear_text_cache();
-    std::vector<std::string> wrap_text(const std::string& text, int max_chars_per_line) const;
+    std::vector<std::string> wrap_text(const std::string& text, int max_px) const;
     bool load_font();
     void draw_bar(int x, int y, int w, int h, double ratio, SDL_Color fill);
     void update_window_title(const Player& player, const std::string& message);

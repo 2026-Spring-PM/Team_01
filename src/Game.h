@@ -73,13 +73,17 @@ private:
     void show_int_tree();
     void show_luk_tree();
     void show_tutorial();
+    void show_market_menu(); // 상점 메뉴 (구매/판매/괴식판매/선물)
 
 #ifdef FARM_GUI
     void handle_gui_market();
+    void handle_gui_monster_food_shop(); // 괴식 판매 GUI
+    void handle_gui_gift_shop();         // 선물하기 GUI
     void handle_gui_farm(Tile& tile);
     void handle_gui_livestock(Tile& tile);
     void handle_gui_building(Tile& tile);
     void handle_gui_kitchen();
+    bool choose_gui_free_cook_ingredients(std::vector<ItemType>& ingredients); // 자유 요리
     bool choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredients);
     void handle_gui_workshop();
     void handle_gui_storage();

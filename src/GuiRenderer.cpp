@@ -166,7 +166,9 @@ bool GuiRenderer::initialize() {
         {"barn_barrel", "barn_barrel.png"}, {"barn_sack", "barn_sack.png"},
         {"barn_crate", "barn_crate.png"}, {"barn_bucket", "barn_bucket.png"},
         {"barn_wall_panel", "barn_wall_panel.png"},
-        {"npc_seed", "npc_seed.png"}
+        {"npc_seed", "npc_seed.png"},
+        {"npc_buyer", "npc_buyer.png"},
+        {"npc_krobus", "npc_krobus.png"}
     };
 
     for (const auto& e : entries) {
@@ -262,6 +264,192 @@ std::string GuiRenderer::item_texture_key(ItemType item) const {
     return "bag";
 }
 
+int GuiRenderer::show_npc_dialogue(const std::string& npc_key,
+                                   const std::string& dialogue,
+                                   const std::vector<std::pair<int, std::string>>& buttons,
+                                   int cancel_id) {
+    if (buttons.empty()) return cancel_id;
+    if (!ready_ || !window_ || !renderer_) return cancel_id;
+
+    // npc_key → 화자 이름 매핑 (튜토리얼과 동일 스타일)
+    std::string npc_label;
+    if      (npc_key == "npc_buyer")  npc_label = "상점 주인";
+    else if (npc_key == "npc_seed")   npc_label = "씨앗 할아버지";
+    else if (npc_key == "npc_krobus") npc_label = "크로버스";
+    else                              npc_label = npc_key;
+
+    const int panel_w = 820;
+    const int panel_h = 500;
+    const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
+    const int panel_y = (WINDOW_HEIGHT - panel_h) / 2;
+    const int margin  = 34;
+    const int npc_w   = 136;
+    const int npc_h   = 170;
+    const int npc_x   = panel_x + 36;
+    const int npc_y   = panel_y + 40;
+    const int text_x  = npc_x + npc_w + 24;    // 튜토리얼과 동일 오프셋
+    const int text_w  = panel_w - margin - npc_w - 24 - margin;
+
+    // 버튼: 항상 2열 그리드
+    const int btn_gap = 10;
+    const int btn_w   = (panel_w - margin * 2 - btn_gap) / 2;
+    const int btn_h   = 46;
+    const int btn_rows = (static_cast<int>(buttons.size()) + 1) / 2;
+    const int btn_area_h = btn_rows * btn_h + (btn_rows - 1) * btn_gap;
+    const int btn_y   = panel_y + panel_h - margin - btn_area_h;
+
+    auto draw_dialog = [&]() {
+        fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 145});
+        fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
+        draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
+        draw_rect_outline(panel_x + 6, panel_y + 6, panel_w - 12, panel_h - 12, SDL_Color{96, 70, 40, 255});
+
+        // NPC 이름 — 텍스트만, 박스 없음 (튜토리얼 헤더 스타일)
+        draw_text(npc_label, text_x, panel_y + 22, SDL_Color{255, 221, 132, 255}, text_w);
+
+        // NPC 사진 (튜토리얼과 동일)
+        fill_rect(npc_x, npc_y, npc_w, npc_h, SDL_Color{30, 22, 16, 200});
+        draw_rect_outline(npc_x, npc_y, npc_w, npc_h, SDL_Color{148, 103, 49, 255});
+        SDL_Rect npc_rect{npc_x, npc_y, npc_w, npc_h};
+        draw_texture(npc_key, npc_rect);
+
+        // 대사 텍스트
+        int y = panel_y + 56;
+        for (const auto& line : wrap_text(dialogue, text_w)) {
+            draw_text(line, text_x, y, SDL_Color{238, 230, 207, 255}, text_w);
+            y += 26;
+            if (y > btn_y - 12) break;
+        }
+
+        // 버튼 — 2열 그리드
+        for (std::size_t i = 0; i < buttons.size(); ++i) {
+            int col = static_cast<int>(i) % 2;
+            int row = static_cast<int>(i) / 2;
+            int x  = panel_x + margin + col * (btn_w + btn_gap);
+            int by = btn_y + row * (btn_h + btn_gap);
+            if (by + btn_h > panel_y + panel_h - 4) continue;
+            SDL_Color base = buttons[i].first == cancel_id
+                ? SDL_Color{92, 70, 62, 255} : SDL_Color{112, 84, 44, 255};
+            fill_rect(x, by, btn_w, btn_h, base);
+            draw_rect_outline(x, by, btn_w, btn_h, SDL_Color{232, 190, 95, 255});
+            std::ostringstream label;
+            if (buttons[i].first == cancel_id) label << "0. ";
+            else if (i < 9) label << (i + 1) << ". ";
+            label << buttons[i].second;
+            draw_text(label.str(), x + 14, by + 13, SDL_Color{255, 245, 213, 255}, btn_w - 28);
+        }
+        SDL_RenderPresent(renderer_);
+    };
+
+    while (true) {
+        draw_dialog();
+        SDL_Event event;
+        while (SDL_WaitEvent(&event)) {
+            if (event.type == SDL_QUIT) return cancel_id;
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_ESCAPE) return cancel_id;
+                if (event.key.keysym.sym == SDLK_0) return cancel_id;
+                if (event.key.keysym.sym == SDLK_RETURN && !buttons.empty())
+                    return buttons.front().first;
+                int idx = -1;
+                if (event.key.keysym.sym >= SDLK_1 && event.key.keysym.sym <= SDLK_9)
+                    idx = event.key.keysym.sym - SDLK_1;
+                if (idx >= 0 && idx < static_cast<int>(buttons.size()))
+                    return buttons[static_cast<std::size_t>(idx)].first;
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                int mx = event.button.x, my = event.button.y;
+                for (std::size_t i = 0; i < buttons.size(); ++i) {
+                    int col = static_cast<int>(i) % 2;
+                    int row = static_cast<int>(i) / 2;
+                    int x  = panel_x + margin + col * (btn_w + btn_gap);
+                    int by = btn_y + row * (btn_h + btn_gap);
+                    SDL_Rect r{x, by, btn_w, btn_h};
+                    SDL_Point pt{mx, my};
+                    if (SDL_PointInRect(&pt, &r)) return buttons[i].first;
+                }
+            }
+            break;
+        }
+    }
+}
+
+void GuiRenderer::show_npc_tutorial(const std::string& npc_key,
+                                    const std::vector<std::pair<std::string,std::string>>& pages) {
+    // pages: {title, body} 쌍 목록 - 다음/완료 버튼으로 순서대로 보여줌
+    if (pages.empty() || !ready_ || !window_ || !renderer_) return;
+
+    const int panel_w = 820;
+    const int panel_h = 480;
+    const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
+    const int panel_y = (WINDOW_HEIGHT - panel_h) / 2;
+    const int margin  = 34;
+    const int npc_w   = 140;
+    const int npc_h   = 180;
+    const int npc_x   = panel_x + margin;
+    const int npc_y   = panel_y + 46;
+    const int text_x  = npc_x + npc_w + 24;
+    const int text_w  = panel_w - margin - npc_w - 24 - margin;
+    const SDL_Rect next_rect{panel_x + panel_w - 210, panel_y + panel_h - 66, 160, 46};
+
+    int page = 0;
+    while (page < static_cast<int>(pages.size())) {
+        const auto& [title, body] = pages[static_cast<std::size_t>(page)];
+        bool last = page + 1 >= static_cast<int>(pages.size());
+
+        auto draw_dialog = [&]() {
+            fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 140});
+            fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 250});
+            draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
+            draw_rect_outline(panel_x + 6, panel_y + 6, panel_w - 12, panel_h - 12, SDL_Color{96, 70, 40, 255});
+
+            draw_text(title, text_x, panel_y + 22, SDL_Color{255, 221, 132, 255}, text_w);
+
+            fill_rect(npc_x, npc_y, npc_w, npc_h, SDL_Color{30, 22, 16, 210});
+            draw_rect_outline(npc_x, npc_y, npc_w, npc_h, SDL_Color{148, 103, 49, 255});
+            SDL_Rect npc_rect{npc_x, npc_y, npc_w, npc_h};
+            draw_texture(npc_key, npc_rect);
+
+            int y = panel_y + 68;
+            for (const auto& line : wrap_text(body, text_w)) {
+                draw_text(line, text_x, y, SDL_Color{238, 230, 207, 255}, text_w);
+                y += 24;
+                if (y > panel_y + panel_h - 96) break;
+            }
+
+            std::ostringstream progress;
+            progress << (page + 1) << " / " << pages.size();
+            draw_text(progress.str(), text_x, panel_y + panel_h - 88,
+                      SDL_Color{214, 200, 170, 255}, text_w);
+
+            fill_rect(next_rect.x, next_rect.y, next_rect.w, next_rect.h, SDL_Color{112, 84, 44, 255});
+            draw_rect_outline(next_rect.x, next_rect.y, next_rect.w, next_rect.h, SDL_Color{232, 190, 95, 255});
+            draw_text(last ? "확인" : "다음", next_rect.x + (last ? 58 : 64),
+                      next_rect.y + 13, SDL_Color{255, 245, 213, 255}, next_rect.w - 40);
+            SDL_RenderPresent(renderer_);
+        };
+
+        bool advanced = false;
+        while (!advanced) {
+            draw_dialog();
+            SDL_Event event;
+            while (SDL_WaitEvent(&event)) {
+                if (event.type == SDL_QUIT) return;
+                if (event.type == SDL_KEYDOWN) {
+                    SDL_Keycode key = event.key.keysym.sym;
+                    if (key == SDLK_ESCAPE) return;
+                    if (key == SDLK_RETURN || key == SDLK_SPACE) { ++page; advanced = true; break; }
+                }
+                if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                    SDL_Point pt{event.button.x, event.button.y};
+                    if (SDL_PointInRect(&pt, &next_rect)) { ++page; advanced = true; break; }
+                }
+                break;
+            }
+        }
+    }
+}
+
 int GuiRenderer::show_choice(const std::string& title,
                              const std::string& message,
                              const std::vector<std::pair<int, std::string>>& buttons,
@@ -290,7 +478,7 @@ int GuiRenderer::show_choice(const std::string& title,
 
         draw_text(title, panel_x + margin, panel_y + 22, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
         int y = panel_y + 68;
-        for (const auto& line : wrap_text(message, 48)) {
+        for (const auto& line : wrap_text(message, 668)) {
             draw_text(line, panel_x + margin, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             y += 24;
             if (y > panel_y + 220) break;
@@ -351,7 +539,58 @@ bool GuiRenderer::confirm(const std::string& title, const std::string& message) 
 }
 
 void GuiRenderer::show_notice(const std::string& title, const std::string& message) {
-    show_choice(title, message, {{0, "확인"}}, 0);
+    if (!ready_ || !window_ || !renderer_) return;
+
+    const int panel_w = 720;
+    const int panel_h = 520;
+    const int panel_x = (WINDOW_WIDTH - panel_w) / 2;
+    const int panel_y = (WINDOW_HEIGHT - panel_h) / 2;
+    const int margin  = 28;
+    const int text_max_w = panel_w - margin * 2;
+    // 버튼
+    const int btn_w = 160, btn_h = 48;
+    const int btn_x = panel_x + (panel_w - btn_w) / 2;
+    const int btn_y = panel_y + panel_h - margin - btn_h;
+
+    auto draw_dialog = [&]() {
+        fill_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_Color{0, 0, 0, 120});
+        fill_rect(panel_x, panel_y, panel_w, panel_h, SDL_Color{44, 34, 26, 248});
+        draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
+        draw_rect_outline(panel_x + 4, panel_y + 4, panel_w - 8, panel_h - 8, SDL_Color{96, 70, 40, 255});
+
+        draw_text(title, panel_x + margin, panel_y + 22, SDL_Color{255, 221, 132, 255}, text_max_w);
+
+        int y = panel_y + 62;
+        const int text_bottom = btn_y - 12;
+        for (const auto& line : wrap_text(message, text_max_w)) {
+            draw_text(line, panel_x + margin, y, SDL_Color{238, 230, 207, 255}, text_max_w);
+            y += 26;
+            if (y > text_bottom) break;
+        }
+
+        fill_rect(btn_x, btn_y, btn_w, btn_h, SDL_Color{112, 84, 44, 255});
+        draw_rect_outline(btn_x, btn_y, btn_w, btn_h, SDL_Color{232, 190, 95, 255});
+        draw_text("확인", btn_x + btn_w / 2 - 16, btn_y + 13, SDL_Color{255, 245, 213, 255}, btn_w - 20);
+        SDL_RenderPresent(renderer_);
+    };
+
+    while (true) {
+        draw_dialog();
+        SDL_Event event;
+        while (SDL_WaitEvent(&event)) {
+            if (event.type == SDL_QUIT) return;
+            if (event.type == SDL_KEYDOWN) {
+                SDL_Keycode k = event.key.keysym.sym;
+                if (k == SDLK_ESCAPE || k == SDLK_RETURN || k == SDLK_SPACE || k == SDLK_0) return;
+            }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                SDL_Point pt{event.button.x, event.button.y};
+                SDL_Rect r{btn_x, btn_y, btn_w, btn_h};
+                if (SDL_PointInRect(&pt, &r)) return;
+            }
+            break;
+        }
+    }
 }
 
 void GuiRenderer::show_event_popup(const std::string& title, const std::string& message) {
@@ -370,7 +609,7 @@ void GuiRenderer::show_event_popup(const std::string& title, const std::string& 
         draw_text(title, panel_x + 36, panel_y + 82, SDL_Color{255, 245, 196, 255}, panel_w - 72);
 
         int y = panel_y + 158;
-        for (const auto& line : wrap_text(message, 48)) {
+        for (const auto& line : wrap_text(message, 668)) {
             draw_text(line, panel_x + 48, y, SDL_Color{238, 230, 207, 255}, panel_w - 96);
             y += 30;
         }
@@ -432,7 +671,7 @@ int GuiRenderer::prompt_quantity(const std::string& title, const std::string& me
         draw_rect_outline(panel_x, panel_y, panel_w, panel_h, SDL_Color{224, 184, 97, 255});
         draw_text(title, panel_x + 32, panel_y + 24, SDL_Color{255, 221, 132, 255}, panel_w - 64);
         int y = panel_y + 72;
-        for (const auto& line : wrap_text(message, 52)) {
+        for (const auto& line : wrap_text(message, 696)) {
             draw_text(line, panel_x + 32, y, SDL_Color{238, 230, 207, 255}, panel_w - 64);
             y += 24;
         }
@@ -583,7 +822,7 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
         }
 
         int y = panel_y + 86;
-        for (const auto& line : wrap_text(tutorial.current_dialogue(), 48)) {
+        for (const auto& line : wrap_text(tutorial.current_dialogue(), 752)) {
             draw_text(line, panel_x + margin + 180, y, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             y += 24;
             if (y > panel_y + panel_h - 116) break;
@@ -911,7 +1150,7 @@ int GuiRenderer::show_action_panel(const std::string& title,
 
         int sy = panel_y + 62;
         int status_lines = 0;
-        for (const auto& line : wrap_text(status_text, 52)) {
+        for (const auto& line : wrap_text(status_text, 390)) {
             draw_text(line, panel_x + margin, sy, SDL_Color{238, 230, 207, 255}, left_w);
             sy += 24;
             if (++status_lines >= 4) break;
@@ -966,7 +1205,7 @@ int GuiRenderer::show_action_panel(const std::string& title,
                       current.disabled ? SDL_Color{180, 170, 150, 255} : SDL_Color{255, 245, 213, 255},
                       right_w - (detail_x - right_x) - 16);
             int dy = panel_y + 154;
-            for (const auto& line : wrap_text(current.subtitle.empty() ? "조건 없음" : current.subtitle, 34)) {
+            for (const auto& line : wrap_text(current.subtitle.empty() ? "조건 없음" : current.subtitle, right_w - (current.icon_key.empty() ? 16 : 78) - 16)) {
                 draw_text(line, detail_x, dy, SDL_Color{214, 200, 170, 255}, right_w - (detail_x - right_x) - 16);
                 dy += 24;
                 if (dy > panel_y + 286) break;
@@ -1246,7 +1485,7 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
         draw_text(title, panel_x + margin, panel_y + 20, SDL_Color{255, 221, 132, 255}, panel_w - margin * 2);
 
         int sy = panel_y + 60;
-        for (const auto& line : wrap_text(status_text, 72)) {
+        for (const auto& line : wrap_text(status_text, 972)) {
             draw_text(line, panel_x + margin, sy, SDL_Color{238, 230, 207, 255}, panel_w - margin * 2);
             sy += 24;
             if (sy > tree_y - 8) break;
@@ -1313,7 +1552,7 @@ int GuiRenderer::show_skill_tree_panel(const std::string& title,
         int dy = detail_y + 136;
         draw_text("효과", detail_x + 18, dy, SDL_Color{255, 221, 132, 255}, detail_w - 36);
         dy += 34;
-        for (const auto& line : wrap_text(n.detail, 34)) {
+        for (const auto& line : wrap_text(n.detail, detail_w - 36)) {
             draw_text(line, detail_x + 18, dy, SDL_Color{238, 230, 207, 255}, detail_w - 36);
             dy += 27;
             if (dy > detail_y + detail_h - 124) break;
@@ -1458,22 +1697,46 @@ bool GuiRenderer::load_font() {
     return false;
 }
 
-std::vector<std::string> GuiRenderer::wrap_text(const std::string& text, int max_chars_per_line) const {
+std::vector<std::string> GuiRenderer::wrap_text(const std::string& text, int max_px) const {
+    // max_px: 픽셀 너비 기준. 여유 마진 8px을 빼서 박스 넘침 방지
+    const int limit = std::max(40, max_px - 8);
     std::vector<std::string> lines;
-    std::string current;
+    // \n 기준으로 단락 분리
+    std::vector<std::string> paragraphs;
+    std::string para;
     for (char ch : text) {
-        if (ch == '\n') {
-            lines.push_back(current);
-            current.clear();
-            continue;
-        }
-        current.push_back(ch);
-        if (static_cast<int>(current.size()) >= max_chars_per_line && ch == ' ') {
-            lines.push_back(current);
-            current.clear();
-        }
+        if (ch == '\n') { paragraphs.push_back(para); para.clear(); }
+        else para.push_back(ch);
     }
-    if (!current.empty()) lines.push_back(current);
+    paragraphs.push_back(para);
+
+    for (const auto& p : paragraphs) {
+        if (p.empty()) { lines.push_back(""); continue; }
+        if (!font_) { lines.push_back(p); continue; }
+        // UTF-8 코드포인트 단위로 순회하며 픽셀 너비 초과 시 줄바꿈
+        std::string cur;
+        size_t i = 0;
+        while (i < p.size()) {
+            unsigned char c = static_cast<unsigned char>(p[i]);
+            int bytes = 1;
+            if      ((c & 0xF8) == 0xF0) bytes = 4;
+            else if ((c & 0xF0) == 0xE0) bytes = 3;
+            else if ((c & 0xE0) == 0xC0) bytes = 2;
+            if (i + static_cast<size_t>(bytes) > p.size()) bytes = 1; // 안전 처리
+            std::string ch_str = p.substr(i, static_cast<size_t>(bytes));
+            i += static_cast<size_t>(bytes);
+            std::string test = cur + ch_str;
+            int w = 0, h = 0;
+            TTF_SizeUTF8(font_, test.c_str(), &w, &h);
+            if (w > limit && !cur.empty()) {
+                lines.push_back(cur);
+                cur = ch_str;
+            } else {
+                cur = test;
+            }
+        }
+        if (!cur.empty()) lines.push_back(cur);
+    }
     if (lines.empty()) lines.push_back("");
     return lines;
 }
@@ -1688,7 +1951,7 @@ void GuiRenderer::draw_side_panel(const Player& player, const std::string& messa
     draw_rect_outline(ox + 24, WINDOW_HEIGHT - 156, PANEL_WIDTH - 48, 126, SDL_Color{122, 94, 54, 255});
     draw_text("메시지", ox + 36, WINDOW_HEIGHT - 144, SDL_Color{255, 221, 132, 255});
     int y = WINDOW_HEIGHT - 112;
-    for (const auto& line : wrap_text(message.empty() ? "WASD 이동 / J 상호작용 / E 인벤토리" : message, 28)) {
+    for (const auto& line : wrap_text(message.empty() ? "WASD 이동 / J 상호작용 / E 인벤토리" : message, 228)) {
         draw_text(line, ox + 36, y, SDL_Color{238, 230, 207, 255}, PANEL_WIDTH - 72);
         y += 22;
         if (y > WINDOW_HEIGHT - 44) break;
@@ -1894,7 +2157,6 @@ int GuiRenderer::fishing_hit_width_for_level(int level) const {
 void GuiRenderer::draw_fishing_frame(int rod_grade, int pos, int great_start, int great_end, int perfect_pos, bool has_perfect, int bar_width) {
     SDL_SetRenderDrawColor(renderer_, 14, 25, 38, 255);
     SDL_RenderClear(renderer_);
-
     // 낚시 UI는 기존에 바늘 표시가 안내 문구와 판정 바를 함께 덮어서
     // 텍스트/바/판정 표시가 겹쳐 보일 수 있었다. 패널, 설명 영역, 판정 바,
     // 바늘 표시 영역을 명확히 분리해서 어떤 위치에서도 UI가 겹치지 않게 한다.
@@ -1933,7 +2195,6 @@ void GuiRenderer::draw_fishing_frame(int rod_grade, int pos, int great_start, in
         fill_rect(bar_x + i * cell, bar_y, cell - 2, bar_h, c);
         draw_rect_outline(bar_x + i * cell, bar_y, cell - 2, bar_h, SDL_Color{43, 50, 60, 130});
     }
-
     // 바늘은 텍스트 영역까지 올라가지 않도록 판정 바 주변에만 그린다.
     const int marker_x = bar_x + pos * cell + cell / 2;
     fill_rect(marker_x - 4, bar_y - 22, 8, bar_h + 44, SDL_Color{255, 236, 68, 220});
@@ -1948,7 +2209,6 @@ void GuiRenderer::draw_fishing_frame(int rod_grade, int pos, int great_start, in
     double guide_ratio = static_cast<double>(great_end - great_start + 1) / static_cast<double>(bar_width);
     draw_text("성공 구간 비율", bar_x, bar_y + 96, SDL_Color{214, 200, 170, 255}, 160);
     draw_bar(bar_x + 150, bar_y + 98, bar_w - 150, 18, guide_ratio, SDL_Color{91, 181, 255, 255});
-
     SDL_RenderPresent(renderer_);
 }
 
@@ -2110,7 +2370,7 @@ bool GuiRenderer::play_blackjack_mining(Player& player, std::string& message) {
             player.add_exp(exp);
             result << "아무 광석도 캐지 못했습니다. XP +" << exp;
             message = result.str();
-            show_notice("블랙잭 광산 결과", message);
+            show_notice("광산 결과", message);
             return false;
         }
 
@@ -2153,11 +2413,11 @@ bool GuiRenderer::play_blackjack_mining(Player& player, std::string& message) {
         }
         if (multiplier > 1) result << "\n헤라클레스 보너스로 보상이 2배가 되었습니다.";
         message = result.str();
-        show_notice("블랙잭 광산 결과", message);
+        show_notice("광산 결과", message);
         return success;
     }
 
     message = result.str();
-    show_notice("블랙잭 광산 결과", message);
+    show_notice("광산 결과", message);
     return success;
 }

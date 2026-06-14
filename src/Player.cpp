@@ -29,6 +29,8 @@ Player::Player()
       int_nodes_{false, false, false, false, false, false, false, false, false},
       luk_nodes_{false, false, false, false, false, false, false},
       sold_monster_food_(false),
+      made_monster_food_(false),
+      trust_ever_dropped_(false),
       shop_trust_(100),
       daily_sales_income_(0),
       pending_dividend_(0),
@@ -241,7 +243,10 @@ void Player::recover_daily_status() {
 
 void Player::lower_shop_trust(int amount) {
     if (amount <= 0) return;
+    int before = shop_trust_;
     shop_trust_ = std::max(0, shop_trust_ - amount);
+    // 71+ → 70 이하로 처음 떨어지는 순간 기록
+    if (before >= 71 && shop_trust_ <= 70) trust_ever_dropped_ = true;
 }
 
 void Player::restore_shop_trust(int amount) {
@@ -299,7 +304,7 @@ int Player::monster_food_sell_price(int base_price) const {
 int Player::monster_food_success_chance() const {
     int chance = 20;
     if (has_int_node(6)) chance += 20;
-    if (has_int_node(8)) chance += 20;
+    if (has_int_node(8)) chance += 30; // 8번까지 열리면 추가 +30%, 총 70%
     return std::min(95, chance);
 }
 
