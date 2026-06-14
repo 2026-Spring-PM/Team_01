@@ -45,14 +45,28 @@ Windows users need an X server such as VcXsrv or Xming and a valid `DISPLAY` set
 
 ### Terminal Version
 
+**macOS:**
+
 ```bash
+brew install cmake
 rm -rf build
 cmake -S . -B build -DENABLE_GUI=OFF
 cmake --build build
 ./build/main
 ```
 
-or:
+**Ubuntu/WSL:**
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake
+rm -rf build
+cmake -S . -B build -DENABLE_GUI=OFF
+cmake --build build
+./build/main
+```
+
+or (any platform):
 
 ```bash
 bash scripts/build.sh
@@ -61,9 +75,25 @@ bash scripts/build.sh
 
 ### GUI Version
 
-Install SDL2 development packages first.
+#### macOS (Homebrew)
 
-Ubuntu/WSL:
+SDL2 uses the native macOS display (Cocoa). No XQuartz or Docker needed.
+
+```bash
+brew install cmake sdl2 sdl2_image sdl2_ttf pkg-config
+ENABLE_GUI=ON bash scripts/build.sh
+./build/main
+```
+
+or equivalently:
+
+```bash
+bash scripts/run_gui.sh
+```
+
+`scripts/run_gui.sh` automatically detects macOS and runs a native local build instead of Docker.
+
+#### Ubuntu/WSL
 
 ```bash
 sudo apt update

@@ -97,6 +97,15 @@ bool GuiRenderer::initialize() {
         return false;
     }
 
+#ifdef __APPLE__
+    // macOS: force OpenGL renderer.
+    // SDL2's default Metal backend accumulates alpha in the framebuffer when
+    // SDL_BLENDMODE_BLEND is active.  The macOS window compositor interprets
+    // that alpha as window transparency, which makes semi-transparent overlays
+    // (popup backgrounds, dim overlays) appear corrupted.  OpenGL does not have
+    // this problem.
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+#endif
     renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer_) renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_SOFTWARE);
     if (!renderer_) {
@@ -1687,6 +1696,10 @@ void GuiRenderer::draw_rect_outline(int x, int y, int w, int h, SDL_Color color)
 
 bool GuiRenderer::load_font() {
     const char* candidates[] = {
+        // macOS system fonts (Korean support)
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+        "/Library/Fonts/Arial Unicode.ttf",
+        // Linux / Docker (Noto CJK)
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",

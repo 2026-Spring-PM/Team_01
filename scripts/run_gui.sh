@@ -1,11 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# GUI mode requires a host display server.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# macOS: Docker containers cannot access the macOS display system.
+# Use a native local build instead (SDL2 uses Cocoa directly, no XQuartz needed).
+if [[ "$(uname)" == "Darwin" ]]; then
+    echo "[INFO] macOS detected: skipping Docker, using native local build."
+
+    # Check that required SDL2 libraries are installed via Homebrew.
+    MISSING=()
+    for lib in sdl2 sdl2_image sdl2_ttf pkg-config; do
+        if ! brew list --formula "$lib" &>/dev/null; then
+            MISSING+=("$lib")
+        fi
+    done
+
+    if [[ ${#MISSING[@]} -gt 0 ]]; then
+        echo "[ERROR] Missing Homebrew packages: ${MISSING[*]}"
+        echo "        Run: brew install ${MISSING[*]}"
+        exit 1
+    fi
+
+    cd "${ROOT_DIR}"
+    ENABLE_GUI=ON bash scripts/build.sh
+    ./build/main
+    exit 0
+fi
+
+# Linux / Windows (WSL): use Docker + X11 forwarding.
 # Linux: run `xhost +local:docker` before this script.
 # Windows: run an X server such as VcXsrv/Xming and set DISPLAY.
 IMAGE_NAME="${IMAGE_NAME:-team01-farm-sim:final}"
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL="*"
