@@ -65,24 +65,39 @@ void give_mining_reward(Player& player, int digs, int multiplier) {
         std::cout << "아무 광맥도 캐지 못했습니다. XP +1\n";
         return;
     }
-    if (digs <= 2) {
-        int qty = digs * multiplier;
-        if (add_item_checked(player, ItemType::COPPER, qty, std::cout)) {
-            player.add_exp(4 * digs);
-            std::cout << "구리 광석 " << qty << "개 획득! XP +" << (4 * digs) << "\n";
+    int copper_total = 0;
+    int iron_total = 0;
+    int gold_total = 0;
+    int exp_total = 0;
+    for (int step = 1; step <= digs && step <= 5; ++step) {
+        if (step <= 2) {
+            copper_total += step;
+            exp_total += 4 * step;
+        } else if (step <= 4) {
+            iron_total += step - 2;
+            exp_total += 6 * step;
+        } else {
+            gold_total += 1;
+            exp_total += 30;
         }
-    } else if (digs <= 4) {
-        int qty = (digs - 2) * multiplier;
-        if (add_item_checked(player, ItemType::IRON, qty, std::cout)) {
-            player.add_exp(6 * digs);
-            std::cout << "철 광석 " << qty << "개 획득! XP +" << (6 * digs) << "\n";
-        }
-    } else {
-        int qty = 1 * multiplier;
-        if (add_item_checked(player, ItemType::GOLD, qty, std::cout)) {
-            player.add_exp(30);
-            std::cout << "금 광석 " << qty << "개 획득! XP +30\n";
-        }
+    }
+
+    bool gained_any = false;
+    if (copper_total > 0 && add_item_checked(player, ItemType::COPPER, copper_total * multiplier, std::cout)) {
+        std::cout << "구리 광석 " << (copper_total * multiplier) << "개 획득!\n";
+        gained_any = true;
+    }
+    if (iron_total > 0 && add_item_checked(player, ItemType::IRON, iron_total * multiplier, std::cout)) {
+        std::cout << "철 광석 " << (iron_total * multiplier) << "개 획득!\n";
+        gained_any = true;
+    }
+    if (gold_total > 0 && add_item_checked(player, ItemType::GOLD, gold_total * multiplier, std::cout)) {
+        std::cout << "금 광석 " << (gold_total * multiplier) << "개 획득!\n";
+        gained_any = true;
+    }
+    if (gained_any) {
+        player.add_exp(exp_total);
+        std::cout << "누적 채광 보상 XP +" << exp_total << "\n";
     }
 }
 
@@ -139,7 +154,7 @@ void play_fishing(Player& player) {
     bool great = pos >= great_start && pos <= great_end;
     bool perfect = has_perfect && pos == perfect_pos;
     if (great || perfect) {
-        std::cout << (perfect ? "PERFECT!\n" : "GREAT!\n");
+        std::cout << (perfect ? "완벽!\n" : "성공!\n");
         give_fish_rewards(player, perfect);
         player.add_exp(perfect ? 10 : 6);
     } else {
@@ -188,7 +203,7 @@ void play_blackjack_mining(Player& player) {
         } else if (player.get_pick_grade() >= 1) {
             std::cout << "곡괭이 힌트: " << pressure_hint(collapse_pressure - pressure) << "\n";
         }
-        std::cout << "보상: 1/2회 구리 1/2개, 3/4회 철 1/2개, 5회 금 1개\n";
+        std::cout << "보상은 누적됩니다: 1회 구리 1개, 2회 구리 2개, 3회 철 1개, 4회 철 2개, 5회 금 1개\n";
         std::cout << "1. 더 판다\n2. 그만 파고 탈출한다\n>> " << std::flush;
         char sel = getch();
         if (sel == '2') break;

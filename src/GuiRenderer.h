@@ -16,6 +16,7 @@
 #include <vector>
 #include <set>
 
+class Tutorial;
 
 struct GuiShopEntry {
     int id;
@@ -53,8 +54,9 @@ public:
     bool initialize();
     bool is_ready() const { return ready_; }
     bool poll_input(char& input);
-    void draw(const Player& player, const Map& map, const std::string& message, bool present = true);
-    void draw_barn(const Player& player, const BarnSystem& barn, const std::string& message, bool present = true);
+    bool needs_animation_frame(const Player& player) const;
+    void draw(const Player& player, const Map& map, const std::string& message);
+    void draw_barn(const Player& player, const BarnSystem& barn, const std::string& message);
     void set_event_status(const std::vector<std::string>& status_lines) { event_status_lines_ = status_lines; }
 
     int show_choice(const std::string& title,
@@ -67,7 +69,7 @@ public:
     int choose_quantity(const std::string& title, const std::string& message, int max_quantity, bool allow_all);
     int prompt_quantity(const std::string& title, const std::string& message, int max_quantity, int default_quantity = 1);
     void show_inventory(const Player& player);
-    void run_tutorial(const Player& player, const Map& map, class Tutorial& tutorial);
+    void run_tutorial(const Player& player, const Map& map, Tutorial& tutorial);
     int show_shop_selector(const std::string& title,
                            const std::string& left_title,
                            const std::string& right_title,
@@ -112,7 +114,6 @@ private:
     std::map<std::string, CachedTextTexture> text_cache_;
     std::vector<std::string> event_status_lines_;
 
-    SDL_Texture* capture_screen_to_texture();
     bool load_texture(const std::string& key, const std::string& path);
     SDL_Texture* texture(const std::string& key) const;
     void draw_texture(const std::string& key, const SDL_Rect& dst);

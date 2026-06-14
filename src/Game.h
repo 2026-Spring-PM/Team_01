@@ -80,6 +80,7 @@ private:
     void handle_gui_livestock(Tile& tile);
     void handle_gui_building(Tile& tile);
     void handle_gui_kitchen();
+    bool choose_gui_monster_food_ingredients(std::vector<ItemType>& ingredients);
     void handle_gui_workshop();
     void handle_gui_storage();
     void show_gui_inventory();

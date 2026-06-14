@@ -221,7 +221,7 @@ void KitchenSystem::perform_action(Player& player, int sel, std::string& message
         return;
     }
     if (sel == 15) {
-        cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::EGG}, message);
+        cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::PORK}, message);
         return;
     }
     if (sel == 16) {

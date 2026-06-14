@@ -179,6 +179,7 @@ bool MarketSystem::sell(Player& player, const MarketItem& item, int qty, std::st
         int success = 0;
         int fail = 0;
         int protected_fail = 0;
+        int trust_recovered = 0;
         int total = 0;
         int price = player.monster_food_sell_price(item.sell_price);
         int chance = player.monster_food_success_chance();
@@ -189,6 +190,9 @@ bool MarketSystem::sell(Player& player, const MarketItem& item, int qty, std::st
             if (std::rand() % 100 < chance) {
                 ++success;
                 total += price;
+                int before_trust = player.get_shop_trust();
+                player.restore_shop_trust(30);
+                trust_recovered += player.get_shop_trust() - before_trust;
             } else {
                 ++fail;
                 if (player.protects_monster_food_failure()) {
@@ -210,6 +214,7 @@ bool MarketSystem::sell(Player& player, const MarketItem& item, int qty, std::st
             << ", 실패 " << fail << ", 골드 +" << total
             << "G, 신뢰도 " << player.get_shop_trust() << "/100.";
         if (protected_fail > 0) oss << " 능수능란한 언변으로 실패 " << protected_fail << "회를 막았습니다.";
+        if (trust_recovered > 0) oss << " 신뢰도 +" << trust_recovered << " 회복.";
         message = oss.str();
         return true;
     }
