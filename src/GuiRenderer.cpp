@@ -2208,7 +2208,6 @@ void GuiRenderer::draw_fishing_frame(int rod_grade, int pos, int great_start, in
     if (has_perfect) {
         draw_text("P", bar_x + perfect_pos * cell + 9, bar_y + 14, SDL_Color{50, 32, 20, 255}, cell - 8);
     }
-    fill_rect(box_x + pos * cell + 6, box_y - 34, cell - 12, bar_h + 62, SDL_Color{255, 236, 68, 210});
 
     double guide_ratio = static_cast<double>(great_end - great_start + 1) / static_cast<double>(bar_width);
     draw_text("성공 구간 비율", bar_x, bar_y + 96, SDL_Color{214, 200, 170, 255}, 160);
