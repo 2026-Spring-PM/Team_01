@@ -4,11 +4,11 @@
 #include <sstream>
 
 static const CropInfo CROPS[] = {
-    {1, ItemType::SEED_POTATO, ItemType::POTATO, "감자", 3, false, 2, 4, 30},
-    {2, ItemType::SEED_CARROT, ItemType::CARROT, "당근", 4, false, 2, 4, 40},
-    {3, ItemType::SEED_WHEAT, ItemType::WHEAT, "밀", 5, false, 3, 5, 50},
-    {4, ItemType::SEED_RICE, ItemType::RICE, "쌀", 6, false, 2, 4, 60},
-    {5, ItemType::SEED_APPLE, ItemType::APPLE, "사과나무", 7, true, 1, 3, 80},
+    {1, ItemType::SEED_POTATO, ItemType::POTATO, "감자", 1, false, 2, 4, 30},
+    {2, ItemType::SEED_CARROT, ItemType::CARROT, "당근", 2, false, 2, 4, 40},
+    {3, ItemType::SEED_WHEAT, ItemType::WHEAT, "밀", 3, false, 3, 5, 50},
+    {4, ItemType::SEED_RICE, ItemType::RICE, "쌀", 4, false, 2, 4, 60},
+    {5, ItemType::SEED_APPLE, ItemType::APPLE, "사과나무", 5, true, 1, 3, 80},
 };
 
 static constexpr int PERENNIAL_COOLDOWN = 3;

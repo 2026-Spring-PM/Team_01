@@ -137,7 +137,6 @@ void MarketSystem::show_monster_food_shop(Player& player, int kitchen_level) {
 
     // 입장 멘트
     system("clear");
-    std::cout << "[괴식 판매] 신용도: " << player.get_shop_trust() << "/100\n";
     std::cout << entry_line(tier) << "\n\n";
     wait_key();
 
@@ -160,8 +159,7 @@ void MarketSystem::show_monster_food_shop(Player& player, int kitchen_level) {
             return;
         }
 
-        std::cout << "[괴식 판매] 신용도: " << player.get_shop_trust()
-                  << "/100 | 성공률: " << player.monster_food_success_chance() << "%\n";
+        std::cout << "[괴식 판매]\n";
         for (int i = 0; i < 3; ++i) {
             int have = player.count_item(MONSTER_FOODS[i]);
             int price = player.monster_food_sell_price(MONSTER_FOOD_PRICES[i]);
@@ -205,32 +203,23 @@ void MarketSystem::show_monster_food_shop(Player& player, int kitchen_level) {
             if (std::rand() % 100 < chance) {
                 ++success;
                 total_gold += price;
-                // 성공: 신용도 3-7 랜덤 하락
-                int drop = 3 + std::rand() % 5; // 3~7
+                int drop = 3 + std::rand() % 5;
                 player.lower_shop_trust(drop);
+
+                // 대사 출력 (신뢰도 수치 없이)
                 system("clear");
-                std::cout << "[판매 성공] " << MONSTER_FOOD_NAMES[idx] << "\n";
                 std::cout << success_line(cur_tier) << "\n";
-                std::cout << "(+" << price << "G | 신용도 -" << drop
-                          << " → " << player.get_shop_trust() << "/100)\n";
                 wait_key();
             } else {
                 ++fail;
                 if (player.protects_monster_food_failure()) {
                     ++protected_fail;
-                    system("clear");
-                    std::cout << "[판매 실패 - 능수능란한 언변으로 위기 모면]\n";
-                    std::cout << fail_line(cur_tier) << "\n";
-                    std::cout << "(신용도 변동 없음)\n";
-                    wait_key();
                 } else {
-                    // 실패: 신용도 13-17 랜덤 하락
-                    int drop = 13 + std::rand() % 5; // 13~17
+                    int drop = 13 + std::rand() % 5;
                     player.lower_shop_trust(drop);
+
                     system("clear");
-                    std::cout << "[판매 실패] " << MONSTER_FOOD_NAMES[idx] << "\n";
                     std::cout << fail_line(cur_tier) << "\n";
-                    std::cout << "(신용도 -" << drop << " → " << player.get_shop_trust() << "/100)\n";
                     wait_key();
                 }
             }
@@ -256,11 +245,14 @@ void MarketSystem::show_monster_food_shop(Player& player, int kitchen_level) {
         }
 
         system("clear");
-        std::cout << "[괴식 거래 결과] 성공 " << success << "회 / 실패 " << fail << "회\n";
-        std::cout << "획득 골드: +" << total_gold << "G | 현재 신용도: "
-                  << player.get_shop_trust() << "/100\n";
+        if (success > 0 && fail == 0)
+            std::cout << "판매 성공 (+" << total_gold << "G)\n";
+        else if (fail > 0 && success == 0)
+            std::cout << "판매 실패\n";
+        else
+            std::cout << "판매 결과: 성공 " << success << "회 (+" << total_gold << "G) / 실패 " << fail << "회\n";
         if (protected_fail > 0)
-            std::cout << "능수능란한 언변으로 신용도 하락 " << protected_fail << "회 방어!\n";
+            std::cout << "능수능란한 언변으로 " << protected_fail << "회 위기 모면!\n";
         wait_key();
     }
 }
