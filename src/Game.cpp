@@ -1052,16 +1052,19 @@ void Game::handle_gui_building(Tile& tile) {
     int sel = gui_renderer_.show_choice("건설 부지", "건설할 시설을 선택하세요. 축사는 시작부터 설치되어 있습니다.", {{1, "주방"}, {2, "작업장"}, {3, "저장소"}, {0, "취소"}}, 0);
     std::string msg;
     if (sel == 1) {
+        if (!gui_renderer_.confirm("주방 건설", "주방을 건설하시겠습니까?\n(비용: 없음)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         place_facility_on_current_plot("주방", msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
     }
     else if (sel == 2) {
+        if (!gui_renderer_.confirm("작업장 건설", "작업장을 건설하시겠습니까?\n(비용: 없음)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         place_facility_on_current_plot("작업장", msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
     }
     else if (sel == 3) {
+        if (!gui_renderer_.confirm("저장소 건설", "저장소를 건설하시겠습니까?\n(요구사항: 100G, 나무 5, 구리 1)")) { renderer_.add_message("건설을 취소했습니다."); return; }
         build_storage(tile, msg);
         renderer_.add_message(msg);
         if (msg.find("건설했습니다") == std::string::npos) gui_renderer_.show_notice("건설 결과", msg);
@@ -1107,7 +1110,25 @@ void Game::handle_gui_kitchen() {
     int sel = gui_renderer_.show_action_panel("주방", status.str(), "레시피 / 조건", actions, recipes, 0);
     if (sel == 0) { renderer_.add_message("주방 이용을 취소했습니다."); return; }
     std::string msg;
-    kitchen_.perform_action(player_, sel, msg);
+    if ((sel >= 1 && sel <= 12) || (sel >= 14 && sel <= 16)) {
+        int qty = gui_renderer_.prompt_quantity("요리 수량", "몇 개를 요리하시겠습니까?", 1, 99);
+        if (qty <= 0) { renderer_.add_message("요리를 취소했습니다."); return; }
+        int success_count = 0;
+        std::string last_msg;
+        for (int i = 0; i < qty; ++i) {
+            if (!kitchen_.perform_action(player_, sel, msg)) {
+                last_msg = msg;
+                break;
+            }
+            success_count++;
+            last_msg = msg;
+        }
+        if (success_count > 0 && success_count < qty) msg = std::to_string(success_count) + "개 요리 성공. " + last_msg;
+        else if (success_count > 1) msg = std::to_string(success_count) + "개 요리 성공!\n(" + last_msg + ")";
+        else msg = last_msg;
+    } else {
+        kitchen_.perform_action(player_, sel, msg);
+    }
     sync_facility_level("주방", kitchen_.get_level());
     renderer_.add_message(msg);
     gui_renderer_.show_notice("주방 결과", msg);

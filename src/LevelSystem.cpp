@@ -43,17 +43,17 @@ int LevelSystem::get_exp_to_next_level() const {
 // Lv30: 3000
 int LevelSystem::required_exp_for_level(int target_level) {
     if (target_level <= 1) return 0;
-    if (target_level <= 4) return target_level * 5;
-    if (target_level == 5) return 30;
-    if (target_level == 6) return 50;
-    if (target_level <= 9) return target_level * 10;
-    if (target_level == 10) return 150;
-    if (target_level <= 15) return 200;
-    if (target_level == 16) return 400;
-    if (target_level <= 19) return 500;
-    if (target_level == 20) return 1000;
-    if (target_level <= 29) return 1500;
-    return 3000; // Lv30
+    if (target_level <= 4) return target_level * 20; // Lv2: 40, Lv3: 60, Lv4: 80
+    if (target_level == 5) return 100;
+    if (target_level == 6) return 150;
+    if (target_level <= 9) return target_level * 30; // Lv7: 210, Lv8: 240, Lv9: 270
+    if (target_level == 10) return 400;
+    if (target_level <= 15) return 600;
+    if (target_level == 16) return 1000;
+    if (target_level <= 19) return 1200;
+    if (target_level == 20) return 2000;
+    if (target_level <= 29) return 3000;
+    return 6000; // Lv30
 }
 
 bool LevelSystem::is_bonus_level(int level) {

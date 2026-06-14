@@ -207,26 +207,22 @@ std::string KitchenSystem::get_recipe_name(std::vector<ItemType> inputs) {
     return "";
 }
 
-void KitchenSystem::perform_action(Player& player, int sel, std::string& message) {
+bool KitchenSystem::perform_action(Player& player, int sel, std::string& message) {
     if (sel == RECIPE_COUNT + 1 || sel == 13) {
-        upgrade(player, message);
-        return;
+        return upgrade(player, message);
     }
     if (sel >= 1 && sel <= RECIPE_COUNT) {
-        cook(player, RECIPES[sel - 1].ingredients, message);
-        return;
+        return cook(player, RECIPES[sel - 1].ingredients, message);
     }
     if (sel == 14) {
-        cook(player, {ItemType::POTATO, ItemType::CARROT}, message);
-        return;
+        return cook(player, {ItemType::POTATO, ItemType::CARROT}, message);
     }
     if (sel == 15) {
-        cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::EGG}, message);
-        return;
+        return cook(player, {ItemType::WHEAT, ItemType::RICE, ItemType::EGG}, message);
     }
     if (sel == 16) {
-        cook(player, {ItemType::APPLE, ItemType::MILK, ItemType::FISH_TUNA, ItemType::PORK, ItemType::RICE}, message);
-        return;
+        return cook(player, {ItemType::APPLE, ItemType::MILK, ItemType::FISH_TUNA, ItemType::PORK, ItemType::RICE}, message);
     }
     message = "올바르지 않은 주방 행동입니다.";
+    return false;
 }
