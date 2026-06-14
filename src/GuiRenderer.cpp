@@ -662,7 +662,10 @@ void GuiRenderer::run_tutorial(const Player& player, const Map& map, Tutorial& t
             
             // Draw NPC Portrait
             if (texture("npc_seed")) {
-                SDL_Rect npc_rect{panel_x + 24, panel_y + 40, 160, 200}; // Adjust size as needed
+                SDL_Rect npc_rect{panel_x + 36, panel_y + 40, 136, 170}; 
+                // Draw a subtle background for the portrait just in case the image has transparency
+                fill_rect(npc_rect.x, npc_rect.y, npc_rect.w, npc_rect.h, SDL_Color{30, 22, 16, 200});
+                draw_rect_outline(npc_rect.x, npc_rect.y, npc_rect.w, npc_rect.h, SDL_Color{148, 103, 49, 255});
                 draw_texture("npc_seed", npc_rect);
             }
             
