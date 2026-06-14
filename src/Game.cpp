@@ -405,6 +405,8 @@ bool Game::place_facility_on_current_plot(const std::string& name, std::string& 
         return false;
     }
     message = name + "을 2x2 크기로 건설했습니다. 건물 아래쪽 문 앞에서 J로 이용하세요.";
+    player_.set_position(ax + 1, ay + 2);
+    player_.set_facing('b');
     return true;
 }
 
@@ -830,6 +832,8 @@ bool Game::build_storage(Tile& tile, std::string& message) {
     player_.set_storage_level(1);
     player_.expand_inventory_slots(r.added_slots);
     message = "저장소 Lv.1을 2x2 크기로 건설했습니다. 인벤토리 최대 용량 +" + std::to_string(r.added_slots) + "! 문 앞에서 이용하세요.";
+    player_.set_position(ax + 1, ay + 2);
+    player_.set_facing('b');
     return true;
 }
 
